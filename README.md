@@ -105,7 +105,7 @@ Positioning: Infrastructure for enforceable digital commerce, not speculative De
 1. Clone the repo:
    ```
    git clone https://github.com/CreoDAMO/SSDF-CryptoMarketplace.git
-   cd ssdf-crypto-marketplace
+   cd ssdf-cryptomarketplace
    ```
 
 2. Install dependencies:
