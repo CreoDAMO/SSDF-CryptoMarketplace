@@ -1,8 +1,6 @@
 # SSDF Crypto Marketplace
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/CreoDAMO/ssdf-crypto-marketplace/blob/main/LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/CreoDAMO/ssdf-crypto-marketplace.svg)](https://github.com/CreoDAMO/ssdf-crypto-marketplace/issues)
-[![GitHub stars](https://img.shields.io/github/stars/CreoDAMO/ssdf-crypto-marketplace.svg)](https://github.com/CreoDAMO/ssdf-crypto-marketplace/stargazers)
 
 **Version:** 1.2 (MVP Locked + AI Modules)  
 **Date:** January 21, 2026  
