@@ -26,11 +26,16 @@ export default function useRegretBuffer() {
     setIsBuffering(false);
   };
 
-  return { start, isBuffering, canConfirm: showConfirm, confirmModal: showConfirm && (
-    <div className="confirm-modal">
-      <p>{HLE_PHRASES.REGRET_CONFIRM}</p>
-      <button onClick={confirm}>Confirm</button>
-      <button onClick={() => setIsBuffering(false)}>Cancel</button>
-    </div>
-  ) };
+  return { 
+    start, 
+    isBuffering, 
+    canConfirm: showConfirm, 
+    confirmModal: showConfirm ? (
+      <div className="confirm-modal">
+        <p>{HLE_PHRASES.REGRET_CONFIRM}</p>
+        <button onClick={confirm}>Confirm</button>
+        <button onClick={() => setIsBuffering(false)}>Cancel</button>
+      </div>
+    ) : null
+  };
 }
