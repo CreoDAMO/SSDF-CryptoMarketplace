@@ -10,7 +10,7 @@ interface INFTMarketplace {
         address creator,
         address to,
         string calldata tokenURI,
-        uint256 royaltyBps_  // Dynamic royaltyBps parameter
+        uint256 royaltyBps_
     ) external returns (uint256);
 }
 
@@ -20,10 +20,11 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
         address buyer;
         address seller;
         uint256 amount;
-        uint256 timeout;  // Unix timestamp after which release or adminRefund is allowed (not a duration)
+        uint256 timeout;
         EscrowStatus status;
         bool isNFT;
         string tokenURI;
+        uint256 royaltyBps;
     }
     IERC20 public immutable paymentToken; // e.g. USDC
     INFTMarketplace public nftContract;
@@ -56,7 +57,8 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
         uint256 amount,
         uint256 timeout,
         bool isNFT,
-        string calldata tokenURI
+        string calldata tokenURI,
+        uint256 royaltyBps_
     ) external nonReentrant {
         require(escrows[orderId].status == EscrowStatus.NONE, "Escrow exists");
         require(amount > 0, "Amount zero");
@@ -68,13 +70,13 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
             timeout: timeout,
             status: EscrowStatus.DEPOSITED,
             isNFT: isNFT,
-            tokenURI: tokenURI
+            tokenURI: tokenURI,
+            royaltyBps: royaltyBps_
         });
         emit Deposited(orderId, msg.sender, amount);
     }
 
-    // Internal release logic
-    function _release(bytes32 orderId, uint256 royaltyBps_) internal {
+    function release(bytes32 orderId) external nonReentrant {
         Escrow storage e = escrows[orderId];
         require(
             msg.sender == e.buyer ||
@@ -82,7 +84,6 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
             "Not authorized"
         );
         require(e.status == EscrowStatus.DEPOSITED, "Invalid state");
-        require(royaltyBps_ <= 1000, "Royalty too high");  // Guard to match NFT MAX_ROYALTY_BPS
         e.status = EscrowStatus.RELEASED;
         uint256 fee = (e.amount * platformFeeBps) / 10_000;
         uint256 payout = e.amount - fee;
@@ -96,20 +97,10 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
                 e.seller,  // creator
                 e.buyer,
                 e.tokenURI,
-                royaltyBps_  // Pass dynamic royaltyBps
+                e.royaltyBps
             );
         }
         emit Released(orderId);
-    }
-
-    // Simple release (default royalty 0)
-    function release(bytes32 orderId) external nonReentrant {
-        _release(orderId, 0);
-    }
-
-    // Release with explicit royalty
-    function releaseWithRoyalty(bytes32 orderId, uint256 royaltyBps_) external nonReentrant {
-        _release(orderId, royaltyBps_);
     }
 
     function dispute(bytes32 orderId) external {
