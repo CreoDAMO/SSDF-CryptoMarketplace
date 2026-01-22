@@ -11,19 +11,19 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.9",
-    "@coinbase/onchainkit": "^0.11.3",
+    "@coinbase/onchainkit": "^1.1.2",
     "@pinata/sdk": "^2.1.0",
-    "ethers": "^5.8.0",
-    "mongoose": "^8.21.0",
+    "ethers": "^6.16.0",
+    "mongoose": "^9.1.5",
     "next": "^16.1.4",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "viem": "^2.44.4"
   },
   "devDependencies": {
-    "@types/node": "^20.19.30",
-    "@types/react": "^18.3.27",
-    "@types/react-dom": "^18.3.7",
+    "@types/node": "^25.0.10",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
     "typescript": "^5.9.3"
   }
 }
