@@ -1,130 +1,174 @@
 # Auditor-Facing Contract Walkthrough: MarketplaceEscrow.sol & MarketplaceNFT.sol
 
-**Protocol:** SSDF Crypto Marketplace v1.2  
-**Date:** January 21, 2026  
-**Authors:** Jacque Antoine DeGraff (@CreoDAMO)  
-**Purpose:** Provide line-by-line intent, design rationale, and mappings to system invariants/threat model for audit efficiency. Assumes familiarity with specs (e.g., non-custodial escrow, atomic fulfillment). Scope: Key functions only—no full code review. References INTEGRITY.md invariants and SECURITY.md threats.
+**Version:** 1.2  
+**Date:** January 22, 2026  
+**Author:** Jacque Antoine DeGraff (@CreoDAMO)  
+**Contact:** jacquedegraff@ssdf.site  
 
-## Overview & Design Principles
-- **System Role:** Escrow enforces non-custodial, atomic digital commerce; NFT provides lazy-minted receipts. Single-instance contracts minimize complexity/gas.  
-- **Assumptions:** Base chain (low fees); USDC as ERC-20; no upgrades (immutable bytecode).  
-- **Invariants Mapping:** All functions align with INTEGRITY.md (e.g., #1 Cryptographic Finality, #4 Atomic Fulfillment).  
-- **Threat Model Alignment:** Mitigates STRIDE risks (e.g., ReentrancyGuard for Tampering; time-locks for Elevation). No discretionary custody.  
-- **Gas Profile:** Deposit ~150k; Release (NFT) ~250k—optimized for Base.  
+This document provides a technical walkthrough of SSDF's core smart contracts for auditors. It maps code to invariants, explains key functions line-by-line, and ties to system claims. For full context, see [whitepaper](https://github.com/CreoDAMO/SSDF-CryptoMarketplace/blob/main/docs/technical-whitepaper/SSDF_Crypto_Marketplace:_A_Technical_Whitepaper_(v1.2).md) and [build specs](https://github.com/CreoDAMO/SSDF-CryptoMarketplace/blob/main/docs/build-specs/SSDF_Crypto_Marketplace_Build_Specs.md).
 
-## MarketplaceEscrow.sol Walkthrough
+## The Problem
 
-### constructor (Lines 42-50)
-- **Intent:** Initialize immutable params; set up dependencies. No runtime changes possible post-deploy.  
-- **Line-by-Line:**  
-  - L43-47: Set paymentToken (USDC), nftContract, feeRecipient, platformFeeBps (default 500=5%), adminRefundDelay (e.g., 86400s=1 day).  
-- **Rationale:** Immutables prevent post-deploy tampering. FeeBps capped in updateFee (≤1000).  
-- **Invariants:** #2 Non-Custodial (no initial fund holds); #3 Time-Bound (delay set here).  
-- **Threats:** Spoofing—Ownable restricts changes; Tampering—no state mutations.  
+Digital commerce has payment finality but no delivery guarantees. Sellers can take payment and ghost. Platforms hold funds in custody without enforceable controls. Chargebacks protect buyers but penalize honest sellers.
 
-### deposit (Lines 52-72)
-- **Intent:** Buyer locks funds onchain; creates escrow entry. Only entry point for funds.  
-- **Line-by-Line:**  
-  - L53-54: Require no existing escrow (status=NONE) and amount>0—prevents overwrites/zero-value spam.  
-  - L55: transferFrom pulls USDC—no ETH handling (assumes approve called offchain).  
-  - L56-63: Map orderId (bytes32 hash) to Escrow struct—buyer=msg.sender, etc. Status=DEPOSITED.  
-  - L64: Emit Deposited for indexing/webhooks.  
-- **Rationale:** Payable only via ERC-20; mappings cheap on Base. No admin role here—user-initiated.  
-- **Invariants:** #2 Non-Custodial (funds held in contract, releasable only per rules); #7 Audit Transparency (event logged).  
-- **Threats:** Tampering—nonReentrant; DoS—amount check + gas limits.  
+Result: Fraud, regulatory ambiguity, and institutional hesitation in crypto commerce.
 
-### _release (Lines 74-106) [Internal]
-- **Intent:** Core atomic logic—payout funds, mint/transfer NFT if applicable. Called by release variants.  
-- **Line-by-Line:**  
-  - L75-80: Auth check (buyer or post-timeout); state=DEPOSITED required.  
-  - L81: Guard royaltyBps_ ≤1000—aligns with NFT max.  
-  - L82: Set RELEASED—irreversible.  
-  - L83-87: Calc/pay fee (to feeRecipient) + payout (to seller).  
-  - L88-95: If NFT, call mintAndTransfer with royaltyBps_—atomic with funds.  
-  - L96: Emit Released.  
-- **Rationale:** All-or-nothing (reverts if any fail); no partial payouts. Royalty dynamic but capped.  
-- **Invariants:** #1 Finality (status=RELEASED locks); #4 Atomic (funds + NFT together).  
-- **Threats:** Tampering—nonReentrant, safe math; Elevation—auth + state guards.  
+## The Solution
 
-### release (Line 108)
-- **Intent:** Simple release for non-royalty or default cases.  
-- **Line-by-Line:**  
-  - L109: Call _release with 0 royaltyBps_.  
-- **Rationale:** UX default—no param for basic use.  
-- **Invariants/Threats:** Same as _release.  
+SSDF uses smart contract escrow to enforce atomic fulfillment—payments and delivery happen together, or not at all:
 
-### releaseWithRoyalty (Line 111)
-- **Intent:** Explicit royalty for advanced/NFT cases.  
-- **Line-by-Line:**  
-  - L112: Call _release with provided royaltyBps_.  
-- **Rationale:** Allows dynamic royalties (e.g., from DB)—capped in _release.  
-- **Invariants/Threats:** Same as _release.  
+- Funds held onchain until buyer confirms receipt (no platform custody).
+- NFTs minted and transferred atomically in the same transaction as payment.
+- Admin intervention is time-locked and logged (no discretionary control).
+- All actions are deterministic and auditable onchain.
 
-### dispute (Lines 114-120)
-- **Intent:** Buyer flags issue—shifts to DISPUTED, enabling admin path.  
-- **Line-by-Line:**  
-  - L115-118: Only buyer; state=DEPOSITED required. Set DISPUTED; emit.  
-- **Rationale:** No params (reason in offchain DB)—keeps onchain lean. Triggers time-lock.  
-- **Invariants:** #3 Time-Bound (enables delayed adminRefund).  
-- **Threats:** Spam—rate-limited offchain; Repudiation—event logged.  
+Core Value: We don't just process payments—we enforce completion.
 
-### adminRefund (Lines 122-134)
-- **Intent:** Admin resolves to buyer—only post-delay/dispute.  
-- **Line-by-Line:**  
-  - L123-129: State=DISPUTED or post-(timeout+delay); not already REFUNDED.  
-  - L130: Set REFUNDED; transfer full amount to buyer (no fee). Emit.  
-- **Rationale:** Full refund to buyer—penalizes seller but bounded by delay. No partials.  
-- **Invariants:** #1 Finality (irreversible); #3 Time-Bound (delay enforced).  
-- **Threats:** Elevation—onlyOwner + guards; Tampering—nonReentrant.  
+## Regulatory Differentiation
 
-### updateFee/updateFeeRecipient (Lines 136-144)
-- **Intent:** Post-deploy config (e.g., fee adjustments)—multisig only.  
-- **Line-by-Line:**  
-  - L137/142: onlyOwner; cap newBps ≤1000.  
-- **Rationale:** Limited to safe ranges—prevents abuse.  
-- **Invariants:** #7 Transparency (auditable via txs).  
-- **Threats:** Elevation—multisig post-deploy.  
+Built for compliance scrutiny, not to avoid it:
+- ✅ Non-custodial (users control funds via smart contracts).
+- ✅ No yield, staking, or pooled funds (pure escrow).
+- ✅ No token issuance (revenue from transaction fees).
+- ✅ Minimal audit surface (single escrow contract, no upgrades).
+- ✅ KYC/AML delegated to Coinbase (registered MSB).
 
-## MarketplaceNFT.sol Walkthrough (Key Functions Only)
+Positioning: Infrastructure for enforceable digital commerce, not speculative DeFi.
 
-### mintAndTransfer (Lines 36-54)
-- **Intent:** Lazy mint + transfer—called only by Escrow during release.  
-- **Line-by-Line:**  
-  - L37: Cap royaltyBps_ ≤ MAX_ROYALTY_BPS (1000).  
-  - L38-42: Increment/mint to contract (custody); set URI/mappings.  
-  - L43: Transfer to buyer. Emit.  
-- **Rationale:** Atomic with Escrow payout; no pre-mints. Royalties per-token.  
-- **Invariants:** #4 Atomic (part of release); #1 Finality (mint irreversible).  
-- **Threats:** Tampering—onlyEscrow; DoS—gas-optimized.  
+## Traction & Readiness
 
-### Other Notes
-- **supportsInterface:** Chains ERC-2981/URIStorage—indexer-friendly.  
-- **updateEscrow:** onlyOwner—used post-deploy for linking.  
+Milestone | Status
+--- | ---
+Smart contract architecture | ✅ Finalized (escrow + ERC-721 NFT)
+OpenZeppelin libraries | ✅ Integrated (ReentrancyGuard, Ownable)
+Base chain deployment target | ✅ Configured (Coinbase ecosystem)
+Platform stack | ✅ Specified (Next.js, MongoDB, Clerk)
+Test Coverage | ✅ 95%+ (Hardhat, Jest, Cypress suites) - [test dir](https://github.com/CreoDAMO/SSDF-CryptoMarketplace/tree/main/test)
+Human Layer Enforcement (HLE) | ✅ Validated (4.2% drop-off, 93% comprehension)
+Audit preparation | ✅ Ready (contracts + test suites)
+MVP timeline | ○ 6-8 weeks post-funding
 
-## Mappings to INTEGRITY.md Invariants
-- #1 Finality: Enforced in RELEASED/REFUNDED states (no re-entry).  
-- #2 Non-Custodial: Funds in contract, user-triggered.  
-- #3 Time-Bound: timeout + adminRefundDelay.  
-- #4 Atomic: _release bundles payout + mint.  
-- #5 AI Non-Sovereignty: AI calls these via guarded APIs.  
-- #6 Compliance: No PII; standards-compliant (ERC-20/721/2981).  
-- #7 Transparency: All mutators emit events.  
+Current Phase: Institutional seed fundraising.
 
-## Mappings to SECURITY.md Threats
-- Tampering: ReentrancyGuard, safe math, caps (royalty/fee).  
-- Elevation: onlyOwner/onlyEscrow + state guards.  
-- Repudiation: Events for all actions.  
-- Disclosure: No sensitive data onchain.  
-- DoS: Mappings/gas limits; no loops.  
-- Spoofing: Msg.sender checks.  
+## Business Model
 
-## Audit Recommendations
-- **Focus Areas:** Reentrancy in release (NFT callback?); overflow in fee calc (unlikely in 0.8+); multisig integration post-deploy.  
-- **Test Coverage:** Hardhat suite verifies atomicity/edges—expand to royalty >1000 reverts.  
-- **Deployment Notes:** Transfer ownership to multisig immediately post-deploy.  
+Revenue Streams:
+- 5% transaction fee on escrow releases.
+- NFT minting fees (lazy minting on delivery).
+- Optional premium seller features (future).
 
-Questions? Contact jacquedegraff@ssdf.site.
+No Token. No Emissions. No Liquidity Games.
 
-(End of Walkthrough—6 pages at 12pt, single-spaced.)
+Revenue from real transactions solving real problems.
 
----
+## Market Opportunity
+
+Initial Focus:
+- Digital tools & software licenses.
+
+## Code Walkthrough: MarketplaceEscrow.sol
+
+This contract manages fund logic and escrow states. Key invariants: #1 Finality (irreversible post-release), #2 Non-Custodial (user-initiated), #3 Time-Bound Admin (delayed refunds), #4 Atomicity (release all-or-nothing).
+
+### State & Storage (Lines 12-28)
+- `Escrow` struct: Buyer/seller, amount, timeout (auto-release), status enum, NFT fields, royaltyBps (stored at deposit).
+- `escrows` mapping: bytes32 orderId → Escrow (efficient, single contract).
+- Immutables: paymentToken (USDC), adminRefundDelay (24h default).
+- Variables: platformFeeBps (capped 10%), feeRecipient (multisig).
+
+Security: No arrays/loops (DoS resistant); uint256 safe (0.8+).
+
+### Core Functions
+
+**deposit() (Lines 57-74):**
+- Caller: Buyer (transferFrom msg.sender).
+- Checks: Escrow doesn't exist, amount >0.
+- Action: Transfer funds to contract, create Escrow struct.
+- Event: Deposited.
+- Security: nonReentrant; user-signed (via frontend wallet).
+- Invariant Tie: #2 Non-Custodial (funds held in contract, not platform wallet).
+
+**release() (Lines 76-102):**
+- Caller: Buyer or anyone post-timeout.
+- Checks: Authorized, state DEPOSITED.
+- Action: Calc fee/payout, transfer to seller/feeRecipient, mint/transfer NFT if applicable (atomic call).
+- Event: Released.
+- Security: nonReentrant; all-or-nothing (reverts if mint fails).
+- Invariant Tie: #1 Finality (status → RELEASED irreversible), #4 Atomicity.
+
+**dispute() (Lines 104-110):**
+- Caller: Buyer only.
+- Checks: State DEPOSITED.
+- Action: Set status DISPUTED (pauses release).
+- Event: Disputed.
+- Security: Simple state change.
+- Invariant Tie: #3 Time-Bound (starts delay clock).
+
+**adminRefund() (Lines 112-123):**
+- Caller: Owner (multisig).
+- Checks: DISPUTED or timeout + delay passed.
+- Action: Transfer full amount to buyer, set REFUNDED.
+- Event: Refunded.
+- Security: nonReentrant; only to original buyer.
+- Invariant Tie: #3 Time-Bound (block.timestamp enforced).
+
+**updateFee() / updateFeeRecipient() (Lines 125-132):**
+- Caller: Owner only.
+- Checks: newBps <=1000 (10%).
+- Action: Update variables.
+- Security: Capped to prevent abuse.
+- Invariant Tie: #7 Transparency (onchain visible).
+
+Gas Estimates: Deposit ~150k; Release ~250k (optimized for Base).
+
+## Code Walkthrough: MarketplaceNFT.sol
+
+This contract handles lazy NFT minting. Key invariants: #4 Atomicity (mint only via escrow), #7 Transparency (royalties onchain).
+
+### State & Storage (Lines 12-21)
+- `_tokenIdCounter`: Counters lib (safe increment).
+- `escrowContract`: Only caller for mint.
+- Mappings: creatorOf, royaltyBps (per token).
+- Constant: MAX_ROYALTY_BPS (10%).
+
+Security: No storage bloat; access restricted.
+
+### Core Functions
+
+**mintAndTransfer() (Lines 38-57):**
+- Caller: onlyEscrow modifier.
+- Checks: royaltyBps_ <= MAX.
+- Action: Increment ID, mint to contract (custody), set URI/creator/royalty, transfer to buyer.
+- Event: Minted.
+- Security: Safe mint/transfer; escrow-only.
+- Invariant Tie: #4 Atomicity (part of release tx).
+
+**royaltyInfo() (Lines 59-64):**
+- View: Returns receiver/amount per ERC-2981.
+- Security: Pure calculation.
+
+**supportsInterface() (Lines 66-69):**
+- Override: ERC-721 + ERC-2981.
+
+**updateEscrow() (Lines 71-74):**
+- Caller: Owner only.
+- Action: Set new escrow (post-deploy update).
+
+Gas Estimate: MintAndTransfer ~120k.
+
+## Security Considerations
+
+- **Reentrancy:** Guarded in all external functions.
+- **Access Control:** Ownable + modifiers; multisig post-deploy.
+- **Gas Limits:** Tested <300k; batch limits prevent DoS.
+- **Upgrades:** None—immutable bytecode.
+- **Fee Abuse:** Capped onchain.
+- **NFT Integrity:** Lazy mint prevents pre-sale exploits.
+
+## Audit Prep
+
+- Tests: [test/MarketplacePair.test.js](https://github.com/CreoDAMO/SSDF-CryptoMarketplace/blob/main/test/MarketplacePair.test.js) (atomicity, timeouts, gas).
+- Metrics: HLE drop-off 4.2%, comprehension 93% (scripts in repo).
+- Invariant Mapping: See whitepaper sections 2.1-2.2.
+
+Questions? security@ssdf.site
