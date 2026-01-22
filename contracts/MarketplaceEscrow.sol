@@ -20,7 +20,7 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
         address buyer;
         address seller;
         uint256 amount;
-        uint256 timeout;
+        uint256 timeout;  // Unix timestamp after which release or adminRefund is allowed (not a duration)
         EscrowStatus status;
         bool isNFT;
         string tokenURI;
@@ -73,7 +73,8 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
         emit Deposited(orderId, msg.sender, amount);
     }
 
-    function release(bytes32 orderId, uint256 royaltyBps_) external nonReentrant {  // Added dynamic royaltyBps_
+    // Internal release logic
+    function _release(bytes32 orderId, uint256 royaltyBps_) internal {
         Escrow storage e = escrows[orderId];
         require(
             msg.sender == e.buyer ||
@@ -81,6 +82,7 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
             "Not authorized"
         );
         require(e.status == EscrowStatus.DEPOSITED, "Invalid state");
+        require(royaltyBps_ <= 1000, "Royalty too high");  // Guard to match NFT MAX_ROYALTY_BPS
         e.status = EscrowStatus.RELEASED;
         uint256 fee = (e.amount * platformFeeBps) / 10_000;
         uint256 payout = e.amount - fee;
@@ -98,6 +100,16 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
             );
         }
         emit Released(orderId);
+    }
+
+    // Simple release (default royalty 0)
+    function release(bytes32 orderId) external nonReentrant {
+        _release(orderId, 0);
+    }
+
+    // Release with explicit royalty
+    function releaseWithRoyalty(bytes32 orderId, uint256 royaltyBps_) external nonReentrant {
+        _release(orderId, royaltyBps_);
     }
 
     function dispute(bytes32 orderId) external {
