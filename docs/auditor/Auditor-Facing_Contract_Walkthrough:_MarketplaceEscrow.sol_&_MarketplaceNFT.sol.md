@@ -128,7 +128,3 @@ Questions? Contact jacquedegraff@ssdf.site.
 (End of Walkthrough—6 pages at 12pt, single-spaced.)
 
 ---
-
-This document is self-contained and auditor-optimized—use it to save cycles. With this, your repo is fully prepared.
-
-Next Recommendation: Hardhat test suite expansion (to cover new edges like royalty guards). Say yes if you want me to generate it.
