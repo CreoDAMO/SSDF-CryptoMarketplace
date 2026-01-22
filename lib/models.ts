@@ -6,6 +6,15 @@ const UserSchema = new Schema({
   role: { type: String, enum: ['buyer', 'seller', 'admin'], default: 'buyer' },
   walletAddress: { type: String },
   createdAt: { type: Date, default: Date.now },
+  onboardingQuizLog: [{
+    qId: { type: String },
+    selectedAnswer: { type: String },
+    correct: { type: Boolean },
+    timestamp: { type: Date, default: Date.now },
+  }],
+  onboardingAttempts: { type: Number, default: 0 },
+  buyerOnboardingComplete: { type: Boolean, default: false },
+  sellerOnboardingComplete: { type: Boolean, default: false },
 });
 
 const ProductSchema = new Schema({
