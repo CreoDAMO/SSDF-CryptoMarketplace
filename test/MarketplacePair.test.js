@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { ethers } from require("hardhat");
+const { ethers } = require("hardhat");
 
 describe("Marketplace Escrow + NFT Pair", function () {
   let Escrow, NFT, escrow, nft, usdc;
@@ -44,7 +44,7 @@ describe("Marketplace Escrow + NFT Pair", function () {
 
   it("Deposits and releases NFT atomically", async function () {
     await escrow.connect(buyer).deposit(ORDER_ID, seller.address, AMOUNT, TIMEOUT, true, TOKEN_URI);
-    await expect(escrow.connect(buyer).release(ORDER_ID))
+    await expect(escrow.connect(buyer).releaseWithRoyalty(ORDER_ID, ROYALTY_BPS))
       .to.emit(escrow, "Released")
       .withArgs(ORDER_ID)
       .and.to.emit(nft, "Minted");
@@ -92,7 +92,7 @@ describe("Marketplace Escrow + NFT Pair", function () {
 
   it("Gas sanity: Release with NFT < 300k gas", async function () {
     await escrow.connect(buyer).deposit(ORDER_ID, seller.address, AMOUNT, TIMEOUT, true, TOKEN_URI);
-    const tx = await escrow.connect(buyer).release(ORDER_ID);
+    const tx = await escrow.connect(buyer).releaseWithRoyalty(ORDER_ID, ROYALTY_BPS);
     const receipt = await tx.wait();
     expect(receipt.gasUsed).to.be.lt(300000); // Reasonable for Base
   });
@@ -101,4 +101,75 @@ describe("Marketplace Escrow + NFT Pair", function () {
     expect(await nft.supportsInterface("0x2a55205a")).to.be.true; // ERC-2981
     expect(await nft.supportsInterface("0x49064906")).to.be.true; // ERC721URIStorage (implicit via override)
   });
+
+  // Expanded Edge + Adversarial Cases
+
+  it("Reverts releaseWithRoyalty if royaltyBps > 1000", async function () {
+    await escrow.connect(buyer).deposit(ORDER_ID, seller.address, AMOUNT, TIMEOUT, true, TOKEN_URI);
+    await expect(escrow.connect(buyer).releaseWithRoyalty(ORDER_ID, 1001))
+      .to.be.revertedWith("Royalty too high");
+  });
+
+  it("Reverts admin refund before delay", async function () {
+    await escrow.connect(buyer).deposit(ORDER_ID, seller.address, AMOUNT, TIMEOUT, false, "");
+    await escrow.connect(buyer).dispute(ORDER_ID);
+    // No time travel—attempt early
+    await expect(escrow.adminRefund(ORDER_ID)).to.be.revertedWith("Refund locked");
+    // Time travel to just before delay end
+    await ethers.provider.send("evm_increaseTime", [ADMIN_DELAY - 1]);
+    await ethers.provider.send("evm_mine");
+    await expect(escrow.adminRefund(ORDER_ID)).to.be.revertedWith("Refund locked");
+  });
+
+  it("Reverts double release attempt", async function () {
+    await escrow.connect(buyer).deposit(ORDER_ID, seller.address, AMOUNT, TIMEOUT, false, "");
+    await escrow.connect(buyer).release(ORDER_ID);
+    await expect(escrow.connect(buyer).release(ORDER_ID)).to.be.revertedWith("Invalid state");
+    // Also test post-timeout double
+    await ethers.provider.send("evm_increaseTime", [86400 + 1]);
+    await ethers.provider.send("evm_mine");
+    await expect(escrow.connect(seller).release(ORDER_ID)).to.be.revertedWith("Invalid state");
+  });
+
+  it("Allows timeout-based release by non-buyer (anyone)", async function () {
+    await escrow.connect(buyer).deposit(ORDER_ID, seller.address, AMOUNT, TIMEOUT, false, "");
+    // Time travel past timeout
+    await ethers.provider.send("evm_increaseTime", [86400 + 1]);
+    await ethers.provider.send("evm_mine");
+    // Non-buyer (e.g., feeRecipient or anyone) can release
+    await expect(escrow.connect(feeRecipient).release(ORDER_ID))
+      .to.emit(escrow, "Released")
+      .withArgs(ORDER_ID);
+    // Verify payout happened
+    const payout = AMOUNT.mul(10000 - FEE_BPS).div(10000);
+    expect(await usdc.balanceOf(seller.address)).to.equal(payout);
+  });
+
+  it("Ensures NFT mint atomicity: Reverts if mint fails (simulated)", async function () {
+    // Simulate mint failure by deploying a failing NFT mock
+    const FailingNFT = await ethers.getContractFactory("FailingMarketplaceNFT"); // Assume a mock contract that reverts on mint
+    const failingNft = await FailingNFT.deploy(escrow.address);
+    await failingNft.deployed();
+
+    // Temporarily point escrow to failing NFT (in test only)
+    const FailingEscrow = await Escrow.deploy(usdc.address, failingNft.address, feeRecipient.address, FEE_BPS, ADMIN_DELAY);
+
+    await usdc.connect(buyer).approve(FailingEscrow.address, AMOUNT);
+    await FailingEscrow.connect(buyer).deposit(ORDER_ID, seller.address, AMOUNT, TIMEOUT, true, TOKEN_URI);
+
+    // Attempt release—should revert entire tx if mint fails
+    await expect(FailingEscrow.connect(buyer).releaseWithRoyalty(ORDER_ID, ROYALTY_BPS)).to.be.revertedWith("Mint failed"); // Assume mock reverts with this
+
+    // Verify no partial state: Funds not released, status still DEPOSITED
+    const e = await FailingEscrow.escrows(ORDER_ID);
+    expect(e.status).to.equal(1); // DEPOSITED (enum index)
+    expect(await usdc.balanceOf(seller.address)).to.equal(0);
+  });
 });
+
+// Mock for atomicity test (add to contracts or test helpers)
+contract FailingMarketplaceNFT {
+  function mintAndTransfer(bytes32, address, address, string calldata, uint256) external returns (uint256) {
+    revert("Mint failed"); // Simulate failure
+  }
+}
