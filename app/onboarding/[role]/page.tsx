@@ -35,29 +35,68 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
     // On confirm: POST to /api/onboarding/complete → Set DB flag, redirect to dashboard
   };
 
+  const nextStep = () => setStep((prev) => prev + 1);
+
   // Render modals per wireframe: Use steps to switch (e.g., if step === 1: Truth Modal)
   return (
-    <div className="modal"> {/* Tailwind styled */}
+    <div className="modal" style={{ padding: '2rem', maxWidth: '500px', margin: '2rem auto', background: '#1a1a2e', borderRadius: '12px', color: 'white' }}>
       {/* Step 1: Scrollable Truths */}
-      {step === 1 && <div>{HLE_PHRASES.TRUTH_1} {/* + Examples */}</div>}
+      {step === 1 && (
+        <div>
+          <h3>Foundational Truths</h3>
+          <p style={{ margin: '1rem 0' }}>{HLE_PHRASES.TRUTH_1}</p>
+          <p style={{ fontStyle: 'italic', opacity: 0.7 }}>{HLE_PHRASES.TRUTH_1_EXAMPLE}</p>
+          <button onClick={nextStep} style={{ marginTop: '1.5rem', width: '100%' }}>I Understand</button>
+        </div>
+      )}
       {/* Step 2: Checkboxes */}
       {step === 2 && (
-        <>
-          <label><input type="checkbox" onChange={() => handleAffirm('escrow')} /> {HLE_PHRASES.AFFIRM_ESCROW}</label>
-          {/* Similar for others */}
-        </>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h3>Affirmations</h3>
+          <label style={{ display: 'block' }}>
+            <input type="checkbox" checked={affirmations.escrow} onChange={() => handleAffirm('escrow')} /> {HLE_PHRASES.AFFIRM_ESCROW}
+          </label>
+          <label style={{ display: 'block' }}>
+            <input type="checkbox" checked={affirmations.disputes} onChange={() => handleAffirm('disputes')} /> {HLE_PHRASES.AFFIRM_DISPUTES}
+          </label>
+          <label style={{ display: 'block' }}>
+            <input type="checkbox" checked={affirmations.finality} onChange={() => handleAffirm('finality')} /> {HLE_PHRASES.AFFIRM_FINALITY}
+          </label>
+          <button 
+            onClick={nextStep} 
+            disabled={!affirmations.escrow || !affirmations.disputes || !affirmations.finality}
+            style={{ marginTop: '1rem' }}
+          >
+            Continue
+          </button>
+        </div>
       )}
-      {/* Step 3: Timeline - Use SVG or simple divs for interactive */}
-      {step === 3 && <div className="timeline">{/* Clickable steps per wireframe */}</div>}
-      {/* Step 4: Quiz */}
+      {/* Step 3: Quiz */}
+      {step === 3 && (
+        <div>
+          <h3>Final Verification</h3>
+          <p style={{ margin: '1rem 0' }}>{HLE_PHRASES.QUIZ_Q1}</p>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button onClick={() => handleQuiz('q1', 'True')} style={{ flex: 1 }}>True</button>
+            <button onClick={() => handleQuiz('q1', 'False')} style={{ flex: 1 }}>False</button>
+          </div>
+        </div>
+      )}
+      {/* Step 4: Final Confirmation */}
       {step === 4 && (
-        <>
-          <p>{HLE_PHRASES.QUIZ_Q1}</p>
-          <button onClick={() => handleQuiz('q1', 'False')}>False</button>
-          {/* On wrong: Increment attempts */}
-        </>
+        <div>
+          <h3>Completion</h3>
+          <p style={{ margin: '1rem 0' }}>Ready to finalize your onboarding as a {role}.</p>
+          {regretBuffer.confirmModal}
+          <button 
+            onClick={completeOnboarding} 
+            disabled={regretBuffer.isBuffering}
+            style={{ width: '100%', padding: '0.75rem' }}
+          >
+            {regretBuffer.isBuffering ? 'Wait...' : 'Complete Onboarding'}
+          </button>
+        </div>
       )}
-      <button onClick={completeOnboarding} disabled={!regretBuffer.canConfirm}>Complete</button>
     </div>
   );
 }
