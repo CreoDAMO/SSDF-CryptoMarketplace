@@ -6,6 +6,9 @@ SSDF Crypto Marketplace is a full-stack digital commerce platform that enforces 
 **Version:** 1.2 (MVP Locked + AI Modules)
 **Stack:** Next.js 14+ (TypeScript), MongoDB, Clerk Auth, viem/ethers, Coinbase OnchainKit
 
+## Documentation
+- [ROADMAP.md](./docs/ROADMAP.md) - Detailed development phases and task list.
+
 ## Project Structure
 ```
 ├── app/                    # Next.js App Router
