@@ -1,7 +1,7 @@
 import { authMiddleware } from '@clerk/nextjs';
 import { NextResponse } from 'next/server';
 import { connectToDB } from '@/lib/mongoose'; // Your DB connector
-import User from '@/models/User'; // Extended schema
+import { User } from '@/lib/models'; // Updated import
 
 export default authMiddleware({
   beforeAuth: async (req) => {
