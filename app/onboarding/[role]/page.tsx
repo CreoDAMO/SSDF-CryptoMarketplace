@@ -1,10 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { HLE_PHRASES } from '@/lib/hle-phrases';
 import useRegretBuffer from '@/hooks/useRegretBuffer'; // See below
 
-export default function Onboarding({ params: { role } }: { params: { role: 'buyer' | 'seller' } }) {
+export default function Onboarding({ params }: { params: Promise<{ role: 'buyer' | 'seller' }> }) {
+  const { role } = use(params);
   const { user } = useUser();
   const [step, setStep] = useState(1);
   const [affirmations, setAffirmations] = useState({ escrow: false, disputes: false, finality: false });
