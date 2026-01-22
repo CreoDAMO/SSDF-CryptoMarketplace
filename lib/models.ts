@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 const UserSchema = new Schema({
   clerkId: { type: String, required: true, unique: true },
@@ -93,9 +93,9 @@ const AgentLogSchema = new Schema({ // v1.2 optional for AI audits
   createdAt: { type: Date, default: Date.now },
 });
 
-export const User = model('User', UserSchema);
-export const Product = model('Product', ProductSchema);
-export const Order = model('Order', OrderSchema);
-export const Invoice = model('Invoice', InvoiceSchema);
-export const Escrow = model('Escrow', EscrowSchema);
-export const AgentLog = model('AgentLog', AgentLogSchema); // v1.2
+export const User = mongoose.models.User || mongoose.model('User', UserSchema);
+export const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
+export const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
+export const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', InvoiceSchema);
+export const Escrow = mongoose.models.Escrow || mongoose.model('Escrow', EscrowSchema);
+export const AgentLog = mongoose.models.AgentLog || mongoose.model('AgentLog', AgentLogSchema);

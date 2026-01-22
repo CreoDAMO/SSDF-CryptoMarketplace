@@ -1,0 +1,29 @@
+{
+  "name": "ssdf-crypto-marketplace",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0 -p 5000",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 5000",
+    "lint": "next lint",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^4.31.8",
+    "@coinbase/onchainkit": "^0.11.3",
+    "@pinata/sdk": "^2.1.0",
+    "ethers": "^5.8.0",
+    "mongoose": "^8.21.0",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "viem": "^2.44.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.30",
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7",
+    "typescript": "^5.9.3"
+  }
+}
