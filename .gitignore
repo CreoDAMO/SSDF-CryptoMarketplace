@@ -48,3 +48,6 @@ artifacts/
 cache/
 typechain/
 typechain-types/
+
+# clerk configuration (can include secrets)
+/.clerk/
