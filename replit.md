@@ -63,8 +63,21 @@ For production deployment to Base mainnet:
 3. Deploy to Vercel or use `npm run build && npm start`
 
 ## Recent Changes
-- Initial Replit environment setup
-- Configured Next.js on port 5000 with proper host settings
-- Created missing package.json, tsconfig.json, next.config.js
-- Added ABI files for smart contracts
-- Simplified middleware for development mode
+- Initial Replit environment setup.
+- Configured Next.js on port 5000 with proper host settings.
+- Fixed `useRegretBuffer` hook syntax error by renaming to `.tsx` and using proper JSX.
+- Resolved `params` Promise unwrapping issues in `app/onboarding/[role]/page.tsx` for Next.js 15+ compatibility.
+- Integrated `ClerkProvider` in `app/layout.tsx` for authentication support.
+- Fixed module resolution errors in `app/api/onboarding/quiz/route.ts` (corrected path to `@/lib/models`).
+- Implemented full multi-step interactive onboarding flow with HLE (Human Layer Enforcement) truths, affirmations, and quiz validation.
+
+## Production Readiness Checklist
+- [ ] **Smart Contracts:** Deploy to Base Mainnet and update `ESCROW_CONTRACT_ADDRESS`.
+- [ ] **Environment Variables:** Securely set all production secrets (Clerk, Pinata, MongoDB, etc.).
+- [ ] **Database:** Transition from development MongoDB to a production-grade cluster.
+- [ ] **Authentication:** Claim Clerk keys for production domain and disable keyless mode.
+- [ ] **AI Integration:** Finalize and test AgentKit module for automated fulfillment checks.
+- [ ] **UI/UX:** Apply final CSS styles to all onboarding and dashboard components.
+- [ ] **Error Handling:** Implement robust error boundaries and logging for blockchain transactions.
+- [ ] **Escrow Logic:** Thoroughly test escrow release/refund cycles on Base Testnet before mainnet launch.
+- [ ] **IPFS:** Verify metadata persistence on Pinata for NFT receipt consistency.
