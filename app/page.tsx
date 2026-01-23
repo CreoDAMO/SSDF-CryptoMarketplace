@@ -1,8 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import ProductCard from '@/src/components/ProductCard'; // Assume this exists from previous implementations
 
 export default function Home() {
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all'); // Assume categories from DB or enum
+
+  const { data: products, isLoading: productsLoading } = useQuery(['products', search, category], async () => {
+    const res = await fetch(`/api/products?search=\( {search}&category= \){category}`);
+    return res.json();
+  });
+
   return (
     <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
       <header style={{ textAlign: 'center', marginBottom: '3rem' }}>
@@ -43,7 +54,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="modal" style={{ textAlign: 'center' }}>
+      <section style={{ textAlign: 'center' }} className="modal">
         <h2 style={{ marginBottom: '1rem' }}>How It Works</h2>
         <div style={{ 
           display: 'grid', 
@@ -69,6 +80,38 @@ export default function Home() {
               Buyer confirms receipt. Funds + NFT transfer atomically.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Merged Global Product Feed Section */}
+      <section style={{ marginTop: '3rem' }}>
+        <h2 style={{ fontSize: '2rem', marginBottom: '1rem', textAlign: 'center' }}>Browse Products</h2>
+        <div className="home-feed">
+          <input 
+            placeholder="Search products..." 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} // Dynamic search
+            style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
+          />
+          <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}>
+            <option value="all">All Categories</option>
+            <option value="nft">NFTs</option>
+            <option value="standard">Standard</option>
+            {/* Dynamic from DB if needed */}
+          </select>
+          {productsLoading ? (
+            <p>Loading products...</p>
+          ) : (
+            <div className="product-grid" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '1.5rem'
+            }}>
+              {products?.map(product => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
