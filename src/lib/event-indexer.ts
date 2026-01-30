@@ -1,10 +1,8 @@
 import { publicClient } from '@/lib/viem';
 import { escrowAbi, ESCROW_ADDRESS } from '@/abis/EscrowABI'; // Your ABI/address
-import Escrow from '@/models/Escrow'; // From lib/models.ts
-import Order from '@/models/Order';
-import AgentLog from '@/models/AgentLog'; // For audit logging
+import { Escrow, Order, AgentLog } from '@/lib/models'; // Consolidated models
 import { parseAbiItem } from 'viem';
-import { sendEmail } from '@/lib/aws-ses'; // Optional: Alert on major desyncs
+// import { sendEmail } from '@/lib/aws-ses'; // Optional: Alert on major desyncs
 
 // Events to index (from contract)
 const EVENTS = [

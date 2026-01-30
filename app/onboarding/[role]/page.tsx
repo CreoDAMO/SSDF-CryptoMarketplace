@@ -2,7 +2,7 @@
 import { useState, use } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { HLE_PHRASES } from '@/lib/hle-phrases';
-import useRegretBuffer from '@/hooks/useRegretBuffer'; // See below
+import useRegretBuffer from '@/hooks/useRegretBuffer';
 
 export default function Onboarding({ params }: { params: Promise<{ role: 'buyer' | 'seller' }> }) {
   const { role } = use(params);

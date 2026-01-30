@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
   const { orderIdStr, seller, amount, timeout, isNFT, tokenURI, royaltyBps } = body;
-  const orderId = ethers.utils.id(orderIdStr) as `0x${string}`; // bytes32
+  const orderId = ethers.id(orderIdStr) as `0x${string}`; // bytes32 (ethers v6)
   try {
     // Prep calldata for frontend
     const calldata = await publicClient.prepareTransactionRequest({
