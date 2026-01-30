@@ -75,9 +75,9 @@ function mapStatus(enumVal) {
   return statuses[enumVal];
 }
 
-async function mapHashToOrderId(hash) {
-  // Implement: Search Orders/Escrows for matching onchain.txHash or derive (e.g., if orderIdStr hashed to bytes32)
-  const escrow = await Escrow.findOne({ 'onchain.txHash': /* related deposit tx */ });
+async function mapHashToOrderId(hash: string) {
+  // Implement: Search Orders/Escrows for matching onchain.txHash or derive
+  const escrow = await Escrow.findOne({ 'onchain.txHash': hash });
   return escrow?.orderId;
 }
 

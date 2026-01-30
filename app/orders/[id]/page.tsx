@@ -1,5 +1,5 @@
 // app/orders/[id]/page.tsx
-import OrderTracker from '@/src/components/OrderTracker';
+import OrderTracker from '@/components/OrderTracker';
 
 export default function OrderPage({ params }: { params: { id: string } }) {
   return (
