@@ -110,9 +110,11 @@ export default function Home() {
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
               gap: '1.5rem'
             }}>
-              {products?.map(product => (
+              {Array.isArray(products) ? products.map((product: any) => (
                 <ProductCard key={product._id} product={product} />
-              ))}
+              )) : (
+                <p>No products found or error loading products.</p>
+              )}
             </div>
           )}
         </div>
