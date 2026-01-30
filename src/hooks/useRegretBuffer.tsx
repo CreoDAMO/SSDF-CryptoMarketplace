@@ -26,10 +26,17 @@ export default function useRegretBuffer() {
     setIsBuffering(false);
   };
 
+  const reset = () => {
+    setIsBuffering(false);
+    setTimer(0);
+    setShowConfirm(false);
+  };
+
   return { 
     start, 
     isBuffering, 
     canConfirm: showConfirm, 
+    reset,
     confirmModal: showConfirm ? (
       <div className="confirm-modal">
         <p>{HLE_PHRASES.REGRET_CONFIRM}</p>

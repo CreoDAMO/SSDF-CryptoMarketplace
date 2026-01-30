@@ -1,38 +1,36 @@
-// /components/EscrowReleaseButton (/components/EscrowActions.tsx)
+'use client';
 import { useState } from 'react';
-import { useWallet } from '@coinbase/onchainkit'; // Or your wallet hook
-import { createWalletClient, custom } from 'viem';
+import { useAccount } from 'wagmi';
+import { keccak256, toBytes, createWalletClient, custom } from 'viem';
 import { baseSepolia } from 'viem/chains';
-import { escrowAbi } from '@/abis/EscrowABI';
-import { ethers } from 'ethers';
-
-const ESCROW_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS as `0x${string}`;
+import { escrowAbi, ESCROW_ADDRESS } from '@/abis/EscrowABI';
+import { publicClient } from '@/lib/viem';
 
 export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
-  const { wallet } = useWallet(); // OnchainKit hook
+  const { address, connector } = useAccount();
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const handleRelease = async () => {
-    if (!wallet) return alert('Connect wallet');
+    if (!address || !connector) return alert('Connect wallet');
     setLoading(true);
     try {
-      const orderId = ethers.utils.id(orderIdStr) as `0x${string}`;
+      const orderId = keccak256(toBytes(orderIdStr)) as `0x${string}`;
+      const provider = await connector.getProvider() as any;
       const walletClient = createWalletClient({
         chain: baseSepolia,
-        transport: custom(wallet.ethereumProvider), // Assuming EIP-1193
+        transport: custom(provider),
       });
-      // Prep & sign
+      
       const { request } = await publicClient.simulateContract({
-        address: ESCROW_ADDRESS,
+        address: ESCROW_ADDRESS as `0x${string}`,
         abi: escrowAbi,
         functionName: 'release',
         args: [orderId],
-        account: wallet.address,
+        account: address,
       });
       const hash = await walletClient.writeContract(request);
       setTxHash(hash);
-      // Webhook will handle DB/email; poll if needed
     } catch (error) {
       console.error(error);
       alert('Release failed');
@@ -47,4 +45,3 @@ export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
     </button>
   );
 }
-// Similar for DisputeButton: Change functionName to 'dispute'

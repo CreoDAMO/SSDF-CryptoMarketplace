@@ -1,35 +1,37 @@
-// app/product/[id]/page.tsx (Dynamic route)
 import { publicClient } from '@/lib/viem';
-import { escrowAbi } from '@/abis/EscrowABI'; // If needed for onchain check
+import { escrowAbi } from '@/abis/EscrowABI';
 
-export default async function ProductDetail({ params }: { params: { id: string } }) {
-  const product = await fetchProduct(params.id); // Server fetch from API/DB
+interface ProductPageProps {
+  params: Promise<{ id: string }>;
+}
 
-  // Onchain status (e.g., if sold via escrow)
-  const onchainStatus = await getOnchainStatus(product); // Helper: Check if active/sold
+export default async function ProductDetail({ params }: ProductPageProps) {
+  const { id } = await params;
+  const product = await fetchProduct(id);
+
+  const onchainStatus = await getOnchainStatus(product);
 
   return (
     <div className="product-detail">
       <h1>{product.title}</h1>
-      <img src={product.images[0]} alt={product.title} />
+      <img src={product.images?.[0]} alt={product.title} />
       <p>{product.description}</p>
       <p>Price: {product.price} {product.currency}</p>
-      <p>Status: {onchainStatus} {/* e.g., 'Active' or 'Sold' with tx link */}</p>
-      <button>Add to Cart</button> {/* Integrate with checkout */}
+      <p>Status: {onchainStatus}</p>
+      <button>Add to Cart</button>
     </div>
   );
 }
 
-// Helpers (server-side)
-async function fetchProduct(id) {
-  const res = await fetch(`/api/products/${id}`);
+async function fetchProduct(id: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5000';
+  const res = await fetch(`${baseUrl}/api/products/${id}`, { cache: 'no-store' });
   return res.json();
 }
 
-async function getOnchainStatus(product) {
+async function getOnchainStatus(product: any) {
   if (product.onchain?.txHash) {
-    // Example: Query escrow if linked
-    return 'Sold (Onchain Verified)'; // Or fetch via viem
+    return 'Sold (Onchain Verified)';
   }
   return product.status;
 }

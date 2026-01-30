@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import VendorInventoryTable from '@/components/VendorInventoryTable';
 
 export default async function VendorDashboardPage() {
-  const { userId } = auth();
+  const { userId } = await auth();
 
   if (!userId) {
     return <div className="p-6">Unauthorized</div>;

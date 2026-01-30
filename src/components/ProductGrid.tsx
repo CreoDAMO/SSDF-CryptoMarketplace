@@ -1,17 +1,16 @@
-// src/components/ProductGrid.tsx
 'use client';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query'; // Assumes installed
+import { useQuery } from '@tanstack/react-query';
 import ProductCard from './ProductCard';
 
 export default function ProductGrid() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
-  const [availability, setAvailability] = useState(true); // inventory > 0
+  const [availability, setAvailability] = useState(true);
 
-  const { data: products, isLoading } = useQuery(
-    ['products', search, category, availability],
-    async () => {
+  const { data: products, isLoading } = useQuery({
+    queryKey: ['products', search, category, availability],
+    queryFn: async () => {
       const params = new URLSearchParams({
         search,
         category,
@@ -19,8 +18,8 @@ export default function ProductGrid() {
       });
       const res = await fetch(`/api/products?${params}`);
       return res.json();
-    }
-  );
+    },
+  });
 
   if (isLoading) return <div>Loading products...</div>;
 
@@ -53,7 +52,7 @@ export default function ProductGrid() {
         </label>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {products?.map((product) => (
+        {products?.map((product: any) => (
           <ProductCard key={product._id} product={product} />
         ))}
       </div>

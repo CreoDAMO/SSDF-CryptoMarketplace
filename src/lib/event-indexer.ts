@@ -1,10 +1,8 @@
 import { publicClient } from '@/lib/viem';
-import { escrowAbi, ESCROW_ADDRESS } from '@/abis/EscrowABI'; // Your ABI/address
-import { Escrow, Order, AgentLog } from '@/lib/models'; // Consolidated models
+import { escrowAbi, ESCROW_ADDRESS } from '@/abis/EscrowABI';
+import { Escrow, Order, AgentLog } from '@/lib/models';
 import { parseAbiItem } from 'viem';
-// import { sendEmail } from '@/lib/aws-ses'; // Optional: Alert on major desyncs
 
-// Events to index (from contract)
 const EVENTS = [
   parseAbiItem('event Deposited(bytes32 indexed orderId, address buyer, uint256 amount)'),
   parseAbiItem('event Released(bytes32 indexed orderId)'),
@@ -12,85 +10,78 @@ const EVENTS = [
   parseAbiItem('event Disputed(bytes32 indexed orderId)'),
 ];
 
-// Main worker function (run via cron or listener)
-export async function indexAndReconcileEvents(fromBlock = 'latest' - 1000n) { // Adjustable lookback
+export async function indexAndReconcileEvents(fromBlock?: bigint) {
   try {
-    // Fetch recent logs (batched by event)
+    const blockNumber = await publicClient.getBlockNumber();
+    const startBlock = fromBlock ?? (blockNumber > BigInt(1000) ? blockNumber - BigInt(1000) : BigInt(0));
+
     const logs = await publicClient.getLogs({
-      address: ESCROW_ADDRESS,
+      address: ESCROW_ADDRESS as `0x${string}`,
       events: EVENTS,
-      fromBlock,
+      fromBlock: startBlock,
     });
 
     for (const log of logs) {
-      const { eventName, args } = log;
-      const orderIdHash = args.orderId; // bytes32
-      const orderIdStr = await mapHashToOrderId(orderIdHash); // Implement reverse lookup (e.g., DB search or hash invert)
+      const { eventName, args } = log as any;
+      const orderIdHash = args?.orderId;
+      if (!orderIdHash) continue;
+      
+      const orderIdStr = await mapHashToOrderId(orderIdHash);
+      if (!orderIdStr) continue;
 
-      if (!orderIdStr) continue; // Skip if no matching DB order
-
-      // Fetch onchain escrow state (source of truth)
       const onchainEscrow = await publicClient.readContract({
-        address: ESCROW_ADDRESS,
+        address: ESCROW_ADDRESS as `0x${string}`,
         abi: escrowAbi,
         functionName: 'escrows',
         args: [orderIdHash],
-      });
+      }) as any;
 
-      // Sync DB
       const dbEscrow = await Escrow.findOne({ orderId: orderIdStr });
       if (!dbEscrow) {
-        // Rare: Create if missing (e.g., webhook failed)
         await Escrow.create({
           orderId: orderIdStr,
-          status: mapStatus(onchainEscrow.status), // Helper: Enum to string
-          timeoutDate: new Date(onchainEscrow.timeout * 1000),
-          onchain: { /* from log */ },
+          status: mapStatus(onchainEscrow.status),
+          timeoutDate: new Date(Number(onchainEscrow.timeout) * 1000),
+          onchain: {},
         });
         await logAction('create_escrow', orderIdStr, 'Reconciled missing entry');
       } else {
-        // Reconcile differences
         if (dbEscrow.status !== mapStatus(onchainEscrow.status)) {
           dbEscrow.status = mapStatus(onchainEscrow.status);
           await dbEscrow.save();
-          await updateOrderStatus(orderIdStr, dbEscrow.status); // Sync Order
+          await updateOrderStatus(orderIdStr, dbEscrow.status);
           await logAction('sync_status', orderIdStr, `Updated to ${dbEscrow.status}`);
-          // Optional alert
           if (dbEscrow.status === 'refunded') await notifyParties(orderIdStr, 'Refunded');
         }
-        // Add other fields if desynced (e.g., timeoutDate)
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Indexing error:', error);
-    await logAction('error', '', error.message); // Sentry if integrated
+    await logAction('error', '', error?.message || 'Unknown error');
   }
 }
 
-// Helpers
-function mapStatus(enumVal) {
+function mapStatus(enumVal: number): string {
   const statuses = ['none', 'deposited', 'disputed', 'released', 'refunded'];
-  return statuses[enumVal];
+  return statuses[enumVal] || 'none';
 }
 
-async function mapHashToOrderId(hash: string) {
-  // Implement: Search Orders/Escrows for matching onchain.txHash or derive
+async function mapHashToOrderId(hash: string): Promise<string | null> {
   const escrow = await Escrow.findOne({ 'onchain.txHash': hash });
-  return escrow?.orderId;
+  return escrow?.orderId || null;
 }
 
-async function updateOrderStatus(orderIdStr, newStatus) {
+async function updateOrderStatus(orderIdStr: string, newStatus: string) {
   await Order.updateOne({ _id: orderIdStr }, { status: newStatus });
 }
 
-async function logAction(action, input, output) {
-  await AgentLog.create({ action, input, output, createdAt: new Date() }); // UserId optional for system logs
+async function logAction(action: string, input: string, output: string) {
+  await AgentLog.create({ action, input, output, createdAt: new Date() });
 }
 
-async function notifyParties(orderIdStr, event) {
-  const order = await Order.findById(orderIdStr).populate('buyerId');
-  await sendEmail({ to: order.buyerId.email, subject: `Order Update: ${event}` });
-  // Add seller/admin
+async function notifyParties(orderIdStr: string, event: string) {
+  const order = await Order.findById(orderIdStr).populate('buyerId') as any;
+  if (order?.buyerId?.email) {
+    console.log(`Would send email to ${order.buyerId.email}: Order Update: ${event}`);
+  }
 }
-
-// Usage: Export and call in cron (see below)

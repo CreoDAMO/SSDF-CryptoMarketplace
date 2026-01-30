@@ -1,8 +1,8 @@
 import { createPublicClient, http, createWalletClient } from 'viem';
-import { baseSepolia } from 'viem/chains'; // Switch to base for prod
+import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const chain = baseSepolia; // Switch to base for prod
+const chain = baseSepolia;
 const rpcUrl = process.env.BASE_RPC_URL || 'https://sepolia.base.org';
 
 export const publicClient = createPublicClient({
@@ -11,14 +11,19 @@ export const publicClient = createPublicClient({
 });
 
 // Platform signer for backend ops (e.g., deposit)
-const platformAccount = privateKeyToAccount(process.env.PLATFORM_PRIVATE_KEY as `0x${string}`);
+const platformPrivateKey = process.env.PLATFORM_PRIVATE_KEY;
+const platformAccount = platformPrivateKey 
+  ? privateKeyToAccount(platformPrivateKey as `0x${string}`)
+  : null;
 
 // Wallet client for backend (if needed)
-export const platformWalletClient = createWalletClient({
-  account: platformAccount,
-  chain,
-  transport: http(rpcUrl),
-});
+export const platformWalletClient = platformAccount 
+  ? createWalletClient({
+      account: platformAccount,
+      chain,
+      transport: http(rpcUrl),
+    })
+  : null;
 
 // Sponsored client placeholder
 export const getSponsoredClient = (userWallet: any) => {

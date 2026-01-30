@@ -1,17 +1,18 @@
-// src/components/OrderTracker.tsx
 'use client';
 import { useQuery } from '@tanstack/react-query';
 
 export default function OrderTracker({ id }: { id: string }) {
-  const { data: order, isLoading } = useQuery(['order', id], async () => {
-    const res = await fetch(`/api/orders/${id}`);
-    return res.json(); // { status, items, total, escrowId }
+  const { data: order, isLoading } = useQuery({
+    queryKey: ['order', id],
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${id}`);
+      return res.json();
+    },
   });
 
   if (isLoading) return <div>Loading order...</div>;
   if (!order) return <div>Order not found</div>;
 
-  // Status steps (visual progress bar)
   const steps = ['Pending', 'Deposited', 'Shipped', 'Delivered', 'Released'];
   const currentIndex = steps.indexOf(order.status);
 
@@ -26,11 +27,11 @@ export default function OrderTracker({ id }: { id: string }) {
         ))}
       </div>
       <ul className="items mt-4">
-        {order.items.map(item => (
+        {order.items?.map((item: any) => (
           <li key={item.productId}>{item.quantity} x {item.title} - {item.price} {order.currency}</li>
         ))}
       </ul>
-      {order.status === 'deposited' && <button>Confirm Receipt</button>} {/* Tie to escrow release */}
+      {order.status === 'deposited' && <button>Confirm Receipt</button>}
       <p>Total: {order.total} {order.currency}</p>
     </div>
   );
