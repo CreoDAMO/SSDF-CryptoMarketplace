@@ -3,15 +3,18 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import ProductCard from '@/src/components/ProductCard'; // Assume this exists from previous implementations
+import ProductCard from '@/components/ProductCard';
 
 export default function Home() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all'); // Assume categories from DB or enum
 
-  const { data: products, isLoading: productsLoading } = useQuery(['products', search, category], async () => {
-    const res = await fetch(`/api/products?search=\( {search}&category= \){category}`);
-    return res.json();
+  const { data: products, isLoading: productsLoading } = useQuery({
+    queryKey: ['products', search, category],
+    queryFn: async () => {
+      const res = await fetch(`/api/products?search=${search}&category=${category}`);
+      return res.json();
+    }
   });
 
   return (
