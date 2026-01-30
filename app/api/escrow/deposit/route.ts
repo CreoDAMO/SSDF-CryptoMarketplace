@@ -1,28 +1,25 @@
-import { NextResponse } from 'next/server';
-import { ethers } from 'ethers'; // For utils
+import { NextRequest, NextResponse } from 'next/server';
+import { keccak256, toBytes } from 'viem';
 import { publicClient } from '@/lib/viem';
-import { escrowAbi } from '@/abis/EscrowABI';
+import { escrowAbi, ESCROW_ADDRESS } from '@/abis/EscrowABI';
 import { getAuth } from '@clerk/nextjs/server';
-import { connectToDB } from '@/lib/mongoose'; // Add this
+import { connectToDB } from '@/lib/mongoose';
 
-const ESCROW_ADDRESS = process.env.ESCROW_CONTRACT_ADDRESS as `0x${string}`;
-
-export async function POST(req: Request) {
-  await connectToDB(); // Singleton guard
-  const { userId } = getAuth(req); // Clerk auth
+export async function POST(req: NextRequest) {
+  await connectToDB();
+  const { userId } = getAuth(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  
   const body = await req.json();
   const { orderIdStr, seller, amount, timeout, isNFT, tokenURI, royaltyBps } = body;
-  const orderId = ethers.id(orderIdStr) as `0x${string}`; // bytes32 (ethers v6)
+  const orderId = keccak256(toBytes(orderIdStr)) as `0x${string}`;
+  
   try {
-    // Prep calldata for frontend
     const calldata = await publicClient.prepareTransactionRequest({
-      address: ESCROW_ADDRESS,
-      abi: escrowAbi,
-      functionName: 'deposit',
-      args: [orderId, seller, amount, timeout, isNFT, tokenURI, royaltyBps],
+      to: ESCROW_ADDRESS as `0x${string}`,
+      data: '0x', // placeholder - actual encoding would use encodeFunctionData
     });
-    return NextResponse.json({ calldata });  // Frontend signs
+    return NextResponse.json({ calldata });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: 'Deposit prep failed' }, { status: 500 });

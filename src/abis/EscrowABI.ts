@@ -1,3 +1,5 @@
+export const ESCROW_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_ADDRESS || '0x0000000000000000000000000000000000000000';
+
 export const escrowAbi = [
   {
     inputs: [

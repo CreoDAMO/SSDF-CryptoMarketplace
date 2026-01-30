@@ -1,16 +1,19 @@
-// src/components/CheckoutForm.tsx (New - User-signed deposit)
+'use client';
+
 import { useState } from 'react';
-import { useWallet } from '@coinbase/onchainkit';
+import { useAccount } from 'wagmi';
 import { createWalletClient, custom } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { publicClient } from '@/lib/viem';
 
-export function CheckoutForm({ body }) { // body from form
-  const { wallet } = useWallet();
+export default function CheckoutForm({ body }: { body?: any }) {
+  const { address, connector } = useAccount();
   const [loading, setLoading] = useState(false);
-  const [txHash, setTxHash] = useState(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const handleDeposit = async () => {
+    if (!connector) return;
+    
     setLoading(true);
     try {
       const res = await fetch('/api/escrow/deposit', {
@@ -18,13 +21,15 @@ export function CheckoutForm({ body }) { // body from form
         body: JSON.stringify(body),
       });
       const { calldata } = await res.json();
+      
+      const provider = await connector.getProvider() as any;
       const walletClient = createWalletClient({
         chain: baseSepolia,
-        transport: custom(wallet.ethereumProvider),
+        transport: custom(provider),
       });
-      const hash = await walletClient.sendTransaction(calldata); // User signs
+      
+      const hash = await walletClient.sendTransaction(calldata);
       setTxHash(hash);
-      // Poll receipt or webhook for DB update
     } catch (error) {
       console.error(error);
     } finally {
@@ -33,7 +38,7 @@ export function CheckoutForm({ body }) { // body from form
   };
 
   return (
-    <button onClick={handleDeposit} disabled={loading}>
+    <button onClick={handleDeposit} disabled={loading || !address}>
       {loading ? 'Depositing...' : 'Deposit to Escrow'}
     </button>
   );
