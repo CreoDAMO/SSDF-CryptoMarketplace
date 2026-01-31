@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { keccak256, toBytes, createWalletClient, custom } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { escrowAbi, ESCROW_ADDRESS } from '@/abis/EscrowABI';
@@ -8,11 +8,23 @@ import { publicClient } from '@/lib/viem';
 
 export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
   const { address, connector } = useAccount();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const handleRelease = async () => {
     if (!address || !connector) return alert('Connect wallet');
+
+    // Network Guard
+    if (chainId !== baseSepolia.id) {
+      if (switchChain) {
+        switchChain({ chainId: baseSepolia.id });
+        return;
+      }
+      return alert('Please switch to Base Sepolia');
+    }
+
     setLoading(true);
     try {
       const orderId = keccak256(toBytes(orderIdStr)) as `0x${string}`;

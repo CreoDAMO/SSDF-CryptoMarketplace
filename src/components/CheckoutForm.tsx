@@ -1,18 +1,29 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { createWalletClient, custom } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { publicClient } from '@/lib/viem';
 
 export default function CheckoutForm({ body }: { body?: any }) {
   const { address, connector } = useAccount();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const handleDeposit = async () => {
     if (!connector) return;
+    
+    // Network Guard: Force Base Sepolia for now
+    if (chainId !== baseSepolia.id) {
+      if (switchChain) {
+        switchChain({ chainId: baseSepolia.id });
+        return;
+      }
+      return alert('Please switch to Base Sepolia');
+    }
     
     setLoading(true);
     try {
