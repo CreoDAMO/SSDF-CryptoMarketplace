@@ -16,6 +16,8 @@ const platformAccount = platformPrivateKey
   ? privateKeyToAccount(platformPrivateKey as `0x${string}`)
   : null;
 
+export const TREASURY_ADDRESS = process.env.TREASURY_ADDRESS as `0x${string}`; // Multi-sig backend reference
+
 // Wallet client for backend (if needed)
 export const platformWalletClient = platformAccount 
   ? createWalletClient({
