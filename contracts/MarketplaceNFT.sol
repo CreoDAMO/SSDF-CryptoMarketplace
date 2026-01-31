@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
+
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -31,9 +32,11 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
     uint256 public platformFeeBps; // e.g. 500 = 5%
     address public feeRecipient;
     mapping(bytes32 => Escrow) public escrows;
-    event Deposited(bytes32 indexed orderId, address buyer, uint256 amount);
-    event Released(bytes32 indexed orderId);
-    event Refunded(bytes32 indexed orderId);
+    uint256 private constant BPS_DENOM = 10_000;
+
+    event Deposited(bytes32 indexed orderId, address indexed buyer, uint256 amount);
+    event Released(bytes32 indexed orderId, address indexed seller, uint256 payout);
+    event Refunded(bytes32 indexed orderId, address indexed buyer, uint256 amount);
     event Disputed(bytes32 indexed orderId);
 
     constructor(
@@ -42,7 +45,7 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
         address _feeRecipient,
         uint256 _platformFeeBps,
         uint256 _adminRefundDelay
-    ) {
+    ) Ownable(msg.sender) {
         paymentToken = IERC20(_paymentToken);
         nftContract = INFTMarketplace(_nftContract);
         feeRecipient = _feeRecipient;
@@ -60,7 +63,8 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
     ) external nonReentrant {
         require(escrows[orderId].status == EscrowStatus.NONE, "Escrow exists");
         require(amount > 0, "Amount zero");
-        paymentToken.transferFrom(msg.sender, address(this), amount);
+        require(timeout > block.timestamp, "Invalid timeout");  // Prevent instant release
+        require(paymentToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
         escrows[orderId] = Escrow({
             buyer: msg.sender,
             seller: seller,
@@ -77,19 +81,18 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
     function _release(bytes32 orderId, uint256 royaltyBps_) internal {
         Escrow storage e = escrows[orderId];
         require(
-            msg.sender == e.buyer ||
-            block.timestamp >= e.timeout,
+            msg.sender == e.buyer || block.timestamp >= e.timeout,
             "Not authorized"
         );
         require(e.status == EscrowStatus.DEPOSITED, "Invalid state");
         require(royaltyBps_ <= 1000, "Royalty too high");  // Guard to match NFT MAX_ROYALTY_BPS
         e.status = EscrowStatus.RELEASED;
-        uint256 fee = (e.amount * platformFeeBps) / 10_000;
+        uint256 fee = (e.amount * platformFeeBps) / BPS_DENOM;
         uint256 payout = e.amount - fee;
         if (fee > 0) {
-            paymentToken.transfer(feeRecipient, fee);
+            require(paymentToken.transfer(feeRecipient, fee), "Fee transfer failed");
         }
-        paymentToken.transfer(e.seller, payout);
+        require(paymentToken.transfer(e.seller, payout), "Payout failed");
         if (e.isNFT) {
             nftContract.mintAndTransfer(
                 orderId,
@@ -99,7 +102,7 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
                 royaltyBps_  // Pass dynamic royaltyBps
             );
         }
-        emit Released(orderId);
+        emit Released(orderId, e.seller, payout);
     }
 
     // Simple release (default royalty 0)
@@ -129,8 +132,8 @@ contract MarketplaceEscrow is ReentrancyGuard, Ownable {
         );
         require(e.status != EscrowStatus.REFUNDED, "Already refunded");
         e.status = EscrowStatus.REFUNDED;
-        paymentToken.transfer(e.buyer, e.amount);
-        emit Refunded(orderId);
+        require(paymentToken.transfer(e.buyer, e.amount), "Refund failed");
+        emit Refunded(orderId, e.buyer, e.amount);
     }
 
     function updateFee(uint256 newBps) external onlyOwner {
