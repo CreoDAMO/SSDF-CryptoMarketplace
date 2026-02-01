@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
-import { createWalletClient, custom } from 'viem';
+import { createWalletClient, custom, keccak256, toBytes } from 'viem';
 import { base } from 'viem/chains';
 import { publicClient } from '@/lib/viem';
 
@@ -42,7 +42,7 @@ export default function CheckoutForm({ body }: { body?: any }) {
       
       const provider = await connector.getProvider() as any;
       const walletClient = createWalletClient({
-        chain: baseSepolia,
+        chain: base,
         transport: custom(provider),
       });
       
