@@ -25,6 +25,8 @@ export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
       return alert('Please switch to Base Mainnet');
     }
 
+    if (!address) return alert('Please connect your wallet');
+
     setLoading(true);
     try {
       const orderId = keccak256(toBytes(orderIdStr)) as `0x${string}`;

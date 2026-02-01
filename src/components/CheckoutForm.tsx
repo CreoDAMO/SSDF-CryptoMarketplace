@@ -24,6 +24,8 @@ export default function CheckoutForm({ body }: { body?: any }) {
       }
       return alert('Please switch to Base Mainnet');
     }
+
+    if (!address) return alert('Please connect your wallet');
     
     setLoading(true);
     try {

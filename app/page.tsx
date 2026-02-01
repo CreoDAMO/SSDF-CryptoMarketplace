@@ -110,10 +110,12 @@ export default function Home() {
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
               gap: '1.5rem'
             }}>
-              {Array.isArray(products) ? products.map((product: any) => (
+              {Array.isArray(products) && products.length > 0 ? products.map((product: any) => (
                 <ProductCard key={product._id} product={product} />
               )) : (
-                <p>No products found or error loading products.</p>
+                <div style={{ textAlign: 'center', width: '100%', padding: '2rem' }}>
+                   <p>No active products found. Seeding genesis items...</p>
+                </div>
               )}
             </div>
           )}
