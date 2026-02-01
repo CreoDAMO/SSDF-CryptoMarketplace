@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { createWalletClient, custom } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { base } from 'viem/chains';
 import { publicClient } from '@/lib/viem';
 
 export default function CheckoutForm({ body }: { body?: any }) {
@@ -16,13 +16,13 @@ export default function CheckoutForm({ body }: { body?: any }) {
   const handleDeposit = async () => {
     if (!connector) return;
     
-    // Network Guard: Force Base Sepolia for now
-    if (chainId !== baseSepolia.id) {
+    // Network Guard: Force Base Mainnet
+    if (chainId !== base.id) {
       if (switchChain) {
-        switchChain({ chainId: baseSepolia.id });
+        switchChain({ chainId: base.id });
         return;
       }
-      return alert('Please switch to Base Sepolia');
+      return alert('Please switch to Base Mainnet');
     }
     
     setLoading(true);

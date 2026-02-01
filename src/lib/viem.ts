@@ -1,9 +1,9 @@
 import { createPublicClient, http, createWalletClient } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const chain = baseSepolia;
-const rpcUrl = process.env.BASE_RPC_URL || 'https://sepolia.base.org';
+const chain = base;
+const rpcUrl = process.env.BASE_RPC_URL || 'https://mainnet.base.org';
 
 export const publicClient = createPublicClient({
   chain,

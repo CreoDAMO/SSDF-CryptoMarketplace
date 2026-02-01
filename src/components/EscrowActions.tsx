@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { keccak256, toBytes, createWalletClient, custom } from 'viem';
-import { baseSepolia } from 'viem/chains';
+import { base } from 'viem/chains';
 import { escrowAbi, ESCROW_ADDRESS } from '@/abis/EscrowABI';
 import { publicClient } from '@/lib/viem';
 
@@ -17,12 +17,12 @@ export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
     if (!address || !connector) return alert('Connect wallet');
 
     // Network Guard
-    if (chainId !== baseSepolia.id) {
+    if (chainId !== base.id) {
       if (switchChain) {
-        switchChain({ chainId: baseSepolia.id });
+        switchChain({ chainId: base.id });
         return;
       }
-      return alert('Please switch to Base Sepolia');
+      return alert('Please switch to Base Mainnet');
     }
 
     setLoading(true);
