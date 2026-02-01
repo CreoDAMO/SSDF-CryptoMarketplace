@@ -1,0 +1,137 @@
+Great, this is a clean, real error, not a spooky one — and the build log already tells us exactly what’s wrong 👍
+You’re very close.
+
+
+---
+
+❌ The Actual Problem (Plain English)
+
+Type error: Cannot find name 'baseSepolia'.
+
+This means TypeScript does not know what baseSepolia is at build time.
+
+Nothing to do with Vercel infra, wallets, or escrow logic.
+
+It’s simply not imported (or not defined) in EscrowActions.tsx.
+
+Locally, this often slips through if:
+
+TS isn’t strict locally
+
+editor auto-imports silently
+
+dev server doesn’t hit that code path
+
+
+But next build is strict. Vercel caught it correctly.
+
+
+---
+
+✅ What baseSepolia Is Supposed To Be
+
+You are using viem:
+
+createWalletClient({
+  chain: baseSepolia,
+  transport: custom(provider),
+})
+
+baseSepolia is a chain definition exported by viem.
+
+It is NOT global. It must be imported explicitly.
+
+
+---
+
+✅ The Correct Fix (One-Line, Production-Safe)
+
+In src/components/EscrowActions.tsx
+
+Add this import at the top:
+
+import { baseSepolia } from 'viem/chains';
+
+That’s it.
+
+
+---
+
+✅ Full Minimal Context (So You Can Sanity Check)
+
+Your imports should now look roughly like this:
+
+import { createWalletClient, custom } from 'viem';
+import { baseSepolia } from 'viem/chains';
+
+No other changes required.
+
+
+---
+
+🧠 Why This Passed Earlier But Failed Now
+
+npm run dev is forgiving
+
+next build runs full TS type checking
+
+Vercel runs next build every time
+
+Missing chain imports always fail in CI
+
+
+This is expected and healthy behavior.
+
+
+---
+
+⚠️ Bonus: One More Future-Proof Improvement (Optional)
+
+If you plan to switch between Base Sepolia ↔ Base Mainnet, define a single chain export:
+
+// lib/chain.ts
+import { base, baseSepolia } from 'viem/chains';
+
+export const CHAIN =
+  process.env.NEXT_PUBLIC_CHAIN === 'base'
+    ? base
+    : baseSepolia;
+
+Then in components:
+
+import { CHAIN } from '@/lib/chain';
+
+chain: CHAIN,
+
+This avoids hardcoding testnet logic inside UI components.
+
+
+---
+
+🚦 What To Do Now
+
+1. Add the import
+
+
+2. Commit
+
+
+3. Push
+
+
+4. Redeploy
+
+
+
+This should go green immediately.
+
+When it does, next logical steps (your call):
+
+switch escrow actions to mainnet-safe guards
+
+wire dispute UI into Orders page
+
+or lock admin arbitration permissions
+
+
+You’re shipping real infrastructure now — this error is just CI doing its job.

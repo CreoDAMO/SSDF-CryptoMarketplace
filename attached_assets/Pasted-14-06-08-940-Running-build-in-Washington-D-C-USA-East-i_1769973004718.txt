@@ -1,0 +1,57 @@
+14:06:08.940 Running build in Washington, D.C., USA (East) – iad1
+14:06:08.952 Build machine configuration: 2 cores, 8 GB
+14:06:09.292 Cloning github.com/CreoDAMO/SSDF-CryptoMarketplace (Branch: main, Commit: ea3fcb6)
+14:06:11.837 Cloning completed: 2.544s
+14:06:11.989 Restored build cache from previous deployment (2Pb3NM7jeyt5TUCcfeYj9fuWJ1HF)
+14:06:12.300 Running "vercel build"
+14:06:13.349 Vercel CLI 50.9.6
+14:06:13.694 Installing dependencies...
+14:06:15.161 npm warn ERESOLVE overriding peer dependency
+14:06:15.162 npm warn While resolving: use-sync-external-store@1.2.0
+14:06:15.163 npm warn Found: react@19.2.3
+14:06:15.163 npm warn node_modules/react
+14:06:15.164 npm warn   react@"^19.2.3" from the root project
+14:06:15.164 npm warn   55 more (zustand, @clerk/clerk-react, @clerk/nextjs, ...)
+14:06:15.164 npm warn
+14:06:15.165 npm warn Could not resolve dependency:
+14:06:15.165 npm warn peer react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-sync-external-store@1.2.0
+14:06:15.166 npm warn node_modules/valtio/node_modules/use-sync-external-store
+14:06:15.166 npm warn   use-sync-external-store@"1.2.0" from valtio@1.13.2
+14:06:15.166 npm warn   node_modules/valtio
+14:06:15.166 npm warn
+14:06:15.166 npm warn Conflicting peer dependency: react@18.3.1
+14:06:15.166 npm warn node_modules/react
+14:06:15.166 npm warn   peer react@"^16.8.0 || ^17.0.0 || ^18.0.0" from use-sync-external-store@1.2.0
+14:06:15.166 npm warn   node_modules/valtio/node_modules/use-sync-external-store
+14:06:15.166 npm warn     use-sync-external-store@"1.2.0" from valtio@1.13.2
+14:06:15.166 npm warn     node_modules/valtio
+14:06:15.365 
+14:06:15.366 up to date in 1s
+14:06:15.366 
+14:06:15.366 98 packages are looking for funding
+14:06:15.366   run `npm fund` for details
+14:06:15.397 Detected Next.js version: 16.1.6
+14:06:15.402 Running "npm run build"
+14:06:15.502 
+14:06:15.508 > ssdf-crypto-marketplace@1.2.0 build
+14:06:15.508 > next build
+14:06:15.508 
+14:06:16.270 ▲ Next.js 16.1.6 (Turbopack)
+14:06:16.271 
+14:06:16.305   Creating an optimized production build ...
+14:06:42.975 ✓ Compiled successfully in 26.3s
+14:06:42.977   Running TypeScript ...
+14:06:59.253 Failed to compile.
+14:06:59.253 
+14:06:59.254 ./src/components/EscrowActions.tsx:36:16
+14:06:59.255 Type error: Cannot find name 'baseSepolia'.
+14:06:59.255 
+14:06:59.255 [0m [90m 34 |[39m       [36mconst[39m provider [33m=[39m [36mawait[39m connector[33m.[39mgetProvider() [36mas[39m any[33m;[39m
+14:06:59.255  [90m 35 |[39m       [36mconst[39m walletClient [33m=[39m createWalletClient({
+14:06:59.255 [31m[1m>[22m[39m[90m 36 |[39m         chain[33m:[39m baseSepolia[33m,[39m
+14:06:59.255  [90m    |[39m                [31m[1m^[22m[39m
+14:06:59.255  [90m 37 |[39m         transport[33m:[39m custom(provider)[33m,[39m
+14:06:59.255  [90m 38 |[39m       })[33m;[39m
+14:06:59.255  [90m 39 |[39m       [0m
+14:06:59.326 Next.js build worker exited with code: 1 and signal: null
+14:06:59.381 Error: Command "npm run build" exited with 1

@@ -33,7 +33,7 @@ export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
       const orderId = orderIdStr.startsWith('0x') ? (orderIdStr as `0x${string}`) : keccak256(toBytes(orderIdStr)) as `0x${string}`;
       const provider = await connector.getProvider() as any;
       const walletClient = createWalletClient({
-        chain: baseSepolia,
+        chain: base,
         transport: custom(provider),
       });
       
