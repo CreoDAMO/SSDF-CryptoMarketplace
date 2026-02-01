@@ -53,7 +53,8 @@ ProductSchema.pre('save', function (next) {
     if (!this.tokenURI) {
       return next(new Error('tokenURI required for NFTs'));
     }
-    if (!this.tokenURI.startsWith('ipfs://')) {
+    const uri = this.tokenURI as string;
+    if (!uri.startsWith('ipfs://')) {
       return next(new Error('tokenURI must be an ipfs:// URI'));
     }
     if (this.royaltyBps > 1000) {
@@ -105,8 +106,8 @@ const AgentLogSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-export const User = mongoose.models.User || mongoose.model('User', UserSchema);
-export const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
-export const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
-export const Escrow = mongoose.models.Escrow || mongoose.model('Escrow', EscrowSchema);
-export const AgentLog = mongoose.models.AgentLog || mongoose.model('AgentLog', AgentLogSchema);
+export const User = mongoose.models?.User || mongoose.model('User', UserSchema);
+export const Product = mongoose.models?.Product || mongoose.model('Product', ProductSchema);
+export const Order = mongoose.models?.Order || mongoose.model('Order', OrderSchema);
+export const Escrow = mongoose.models?.Escrow || mongoose.model('Escrow', EscrowSchema);
+export const AgentLog = mongoose.models?.AgentLog || mongoose.model('AgentLog', AgentLogSchema);

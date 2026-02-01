@@ -29,9 +29,14 @@ export default function CheckoutForm({ body }: { body?: any }) {
     
     setLoading(true);
     try {
+      const orderId = keccak256(toBytes(`order_${Date.now()}`)) as `0x${string}`;
       const res = await fetch('/api/escrow/deposit', {
         method: 'POST',
-        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...body,
+          orderIdStr: orderId
+        }),
       });
       const { calldata } = await res.json();
       

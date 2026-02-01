@@ -29,7 +29,8 @@ export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
 
     setLoading(true);
     try {
-      const orderId = keccak256(toBytes(orderIdStr)) as `0x${string}`;
+      // Use provided orderIdStr directly or hash it if required by contract
+      const orderId = orderIdStr.startsWith('0x') ? (orderIdStr as `0x${string}`) : keccak256(toBytes(orderIdStr)) as `0x${string}`;
       const provider = await connector.getProvider() as any;
       const walletClient = createWalletClient({
         chain: baseSepolia,
@@ -43,7 +44,10 @@ export function EscrowReleaseButton({ orderIdStr }: { orderIdStr: string }) {
         args: [orderId],
         account: address,
       });
-      const hash = await walletClient.writeContract(request);
+      const hash = await walletClient.writeContract({
+        ...request,
+        chain: base,
+      } as any);
       setTxHash(hash);
     } catch (error) {
       console.error(error);
