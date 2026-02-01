@@ -4,6 +4,11 @@
 0x21Fb1fFaefA40c042276BB4Bcf8B826A647aE91E
 ```
 
+## MarketplacEscroe Address:
+```txt
+0x7e1868430e86304Aac93a8964c4a1D5C12A76ED5
+```
+
 ## Here’s the authoritative checklist 👇
 
 
@@ -21,8 +26,6 @@ USDC on Base mainnet
 (Use the official Base USDC address)
 
 
-
-
 ---
 
 2️⃣ NFT Contract
@@ -32,8 +35,6 @@ USDC on Base mainnet
 ```
 
 > The MarketplaceNFT you already deployed
-
-
 
 
 ---
@@ -52,8 +53,6 @@ Sent immediately here on release()
 
 Never stored in the contract
 
-
-
 ---
 
 4️⃣ Platform Fee BPS
@@ -61,11 +60,7 @@ Never stored in the contract
 Example values:
 
 ```txt
-250 = 2.5%
-
 500 = 5%
-
-750 = 7.5%
 ```
 
 > Hard-capped at 10% by the contract
@@ -80,8 +75,6 @@ Example values:
 In seconds, for example:
 
 ```txt
-48h → 172800
-
 72h → 259200
 ```
 
