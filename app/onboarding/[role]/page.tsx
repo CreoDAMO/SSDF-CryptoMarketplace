@@ -103,8 +103,8 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
           <h3>Final Verification</h3>
           <p style={{ margin: '1rem 0' }}>{HLE_PHRASES.QUIZ_Q1}</p>
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={() => handleQuiz('q1', 'True')} style={{ flex: 1 }}>True</button>
-            <button onClick={() => handleQuiz('q1', 'False')} style={{ flex: 1 }}>False</button>
+            <button onClick={() => handleQuiz('quiz', 'True')} style={{ flex: 1 }}>True</button>
+            <button onClick={() => handleQuiz('quiz', 'False')} style={{ flex: 1 }}>False</button>
           </div>
         </div>
       )}
