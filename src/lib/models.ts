@@ -113,8 +113,41 @@ const AgentLogSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+const DisputeSchema = new Schema({
+  orderId: { type: String, required: true, unique: true },
+  status: { type: String, enum: ['OPEN', 'AI_REVIEWED', 'RESOLVED', 'FINALIZED'], default: 'OPEN' },
+  buyerAddress: { type: String, lowercase: true },
+  sellerAddress: { type: String, lowercase: true },
+  buyerClaim: { type: String, required: true, trim: true },
+  sellerResponse: { type: String, trim: true },
+  aiAnalysis: {
+    recommendation: { type: String, enum: ['REFUND', 'RELEASE', 'INSUFFICIENT EVIDENCE'] },
+    confidence: { type: Number, min: 0, max: 100 },
+    reasoning: [{ type: String }],
+    model: { type: String },
+    createdAt: { type: Date },
+  },
+  adminAction: {
+    action: { type: String, enum: ['REFUND', 'RELEASE'] },
+    adminAddress: { type: String },
+    txHash: { type: String },
+    actedAt: { type: Date },
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+DisputeSchema.index({ orderId: 1 });
+DisputeSchema.index({ status: 1 });
+
+DisputeSchema.pre('save', function (this: any, next: any) {
+  this.updatedAt = new Date();
+  next();
+});
+
 export const User = mongoose.models?.User || mongoose.model('User', UserSchema);
 export const Product = mongoose.models?.Product || mongoose.model('Product', ProductSchema);
 export const Order = mongoose.models?.Order || mongoose.model('Order', OrderSchema);
 export const Escrow = mongoose.models?.Escrow || mongoose.model('Escrow', EscrowSchema);
 export const AgentLog = mongoose.models?.AgentLog || mongoose.model('AgentLog', AgentLogSchema);
+export const Dispute = mongoose.models?.Dispute || mongoose.model('Dispute', DisputeSchema);
