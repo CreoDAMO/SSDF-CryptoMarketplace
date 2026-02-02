@@ -38,7 +38,7 @@ ProductSchema.index({ sellerAddress: 1 });
 ProductSchema.index({ categories: 1 });
 ProductSchema.index({ status: 1 });
 
-ProductSchema.pre('save', function (next) {
+ProductSchema.pre('save', function (this: any, next: any) {
   this.updatedAt = new Date();
   try {
     const priceNum = BigInt(this.priceUSDC);
