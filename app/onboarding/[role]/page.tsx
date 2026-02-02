@@ -1,41 +1,62 @@
 'use client';
-import { useState, use, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { HLE_PHRASES } from '@/lib/hle-phrases';
 import useRegretBuffer from '@/hooks/useRegretBuffer';
 
-export default function Onboarding({ params }: { params: Promise<{ role: 'buyer' | 'seller' }> }) {
-  const { role } = use(params);
+export default function Onboarding({ params }: { params: { role: 'buyer' | 'seller' } }) {
+  const { role } = params;
   const { user } = useUser();
   const [step, setStep] = useState(1);
   const [affirmations, setAffirmations] = useState({ escrow: false, disputes: false, finality: false });
   const [quizAnswers, setQuizAnswers] = useState({});
   const [attempts, setAttempts] = useState(0);
-  const regretBuffer = useRegretBuffer(); // Hook for delays
+  const regretBuffer = useRegretBuffer();
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('onboardingAttempts');
+    if (saved) setAttempts(Number(saved));
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem('onboardingAttempts', String(attempts));
+  }, [attempts]);
 
   if (attempts >= 3) {
-    // Cooldown: Use setTimeout or DB timestamp check
     return <div>Too many attempts. Try again in 5 minutes.</div>;
   }
 
   const handleAffirm = (key: keyof typeof affirmations) => setAffirmations((prev) => ({ ...prev, [key]: !prev[key] }));
+  
   const handleQuiz = async (qId: string, answer: string) => {
     setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
-    // Submit to /api/onboarding/quiz (logs + checks correct)
-    const res = await fetch('/api/onboarding/quiz', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ qId, answer, isFinal: step === 3 }) 
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      if (res.status === 429) {
-        alert(data.error);
+    
+    try {
+      const res = await fetch('/api/onboarding/quiz', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qId, answer, isFinal: step === 3 }) 
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        
+        if (res.status === 429) {
+          alert(data.error);
+          return;
+        }
+        
+        if (res.status === 400 || res.status === 401) {
+          setAttempts((prev) => prev + 1);
+          setStep(1);
+        }
+        
+        return;
       }
-      setAttempts((prev) => prev + 1);
-      setStep(1); // Loop back on failure
-    } else {
+      
       nextStep();
+    } catch (error) {
+      console.error('Network error during quiz submission:', error);
     }
   };
 
@@ -44,7 +65,6 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
     regretBuffer.start(5);
   };
 
-  // Add confirmation logic for regret buffer
   useEffect(() => {
     if (regretBuffer.canConfirm) {
       const finalize = async () => {
@@ -54,6 +74,7 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
           body: JSON.stringify({ role })
         });
         if (res.ok) {
+          sessionStorage.removeItem('onboardingAttempts');
           window.location.href = '/dashboard';
         }
       };
@@ -63,10 +84,8 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
 
   const nextStep = () => setStep((prev) => prev + 1);
 
-  // Render modals per wireframe: Use steps to switch (e.g., if step === 1: Truth Modal)
   return (
     <div className="modal" style={{ padding: '2rem', maxWidth: '500px', margin: '2rem auto', background: '#1a1a2e', borderRadius: '12px', color: 'white' }}>
-      {/* Step 1: Scrollable Truths */}
       {step === 1 && (
         <div>
           <h3>Foundational Truths</h3>
@@ -75,7 +94,6 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
           <button onClick={nextStep} style={{ marginTop: '1.5rem', width: '100%' }}>I Understand</button>
         </div>
       )}
-      {/* Step 2: Checkboxes */}
       {step === 2 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h3>Affirmations</h3>
@@ -97,7 +115,6 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
           </button>
         </div>
       )}
-      {/* Step 3: Quiz */}
       {step === 3 && (
         <div>
           <h3>Final Verification</h3>
@@ -108,7 +125,6 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
           </div>
         </div>
       )}
-      {/* Step 4: Final Confirmation */}
       {step === 4 && (
         <div>
           <h3>Completion</h3>
