@@ -12,7 +12,11 @@ SSDF Crypto Marketplace is a full-stack digital commerce platform that enforces 
 ## Project Structure
 ```
 ├── app/                    # Next.js App Router
-│   ├── api/               # API routes (escrow, ai, onboarding)
+│   ├── api/               # API routes (escrow, ai, onboarding, disputes)
+│   │   ├── disputes/      # Dispute creation and listing
+│   │   ├── admin/disputes/ # Admin dispute management
+│   │   └── ai/resolution/  # AI dispute analysis
+│   ├── admin/arbitration/ # Admin arbitration UI
 │   ├── onboarding/        # User onboarding flows
 │   ├── layout.tsx         # Root layout
 │   ├── page.tsx           # Home page
@@ -73,6 +77,20 @@ For production deployment to Base mainnet:
 - Integrated `ClerkProvider` in `app/layout.tsx` for authentication support.
 - Fixed module resolution errors in `app/api/onboarding/quiz/route.ts` (corrected path to `@/lib/models`).
 - Implemented full multi-step interactive onboarding flow with HLE (Human Layer Enforcement) truths, affirmations, and quiz validation.
+
+### February 2026 - Dispute Resolution System
+- **Dispute Schema:** Added `Dispute` model to `lib/models.ts` with support for AI analysis and admin actions.
+- **Dispute API Routes:**
+  - `POST /api/disputes` - Create a new dispute for an order
+  - `GET /api/disputes` - List user's disputes
+  - `GET /api/admin/disputes` - Admin queue of pending disputes
+  - `GET/POST /api/admin/disputes/[orderId]` - Get dispute details / resolve disputes
+- **AI Resolution API:** `POST /api/ai/resolution` - Hardened prompt for AI dispute analysis with hallucination guards.
+- **Admin Arbitration UI:**
+  - `/admin/arbitration` - Dispute queue with filtering
+  - `/admin/arbitration/[orderId]` - Detailed dispute review with AI analysis and resolution actions
+- **Order Dispute Button:** Added dispute functionality to OrderTracker component.
+- **Route Guards:** Added `OnboardingGuard` component and updated middleware for protected routes.
 
 ## Production Readiness Checklist
 - [ ] **Smart Contracts:** Deploy to Base Mainnet and update `ESCROW_CONTRACT_ADDRESS`.
