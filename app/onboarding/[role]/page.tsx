@@ -1,5 +1,5 @@
 'use client';
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { HLE_PHRASES } from '@/lib/hle-phrases';
 import useRegretBuffer from '@/hooks/useRegretBuffer';
@@ -22,18 +22,44 @@ export default function Onboarding({ params }: { params: Promise<{ role: 'buyer'
   const handleQuiz = async (qId: string, answer: string) => {
     setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
     // Submit to /api/onboarding/quiz (logs + checks correct)
-    const res = await fetch('/api/onboarding/quiz', { method: 'POST', body: JSON.stringify({ qId, answer }) });
+    const res = await fetch('/api/onboarding/quiz', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qId, answer, isFinal: step === 3 }) 
+    });
     if (!res.ok) {
+      const data = await res.json();
+      if (res.status === 429) {
+        alert(data.error);
+      }
       setAttempts((prev) => prev + 1);
       setStep(1); // Loop back on failure
+    } else {
+      nextStep();
     }
   };
 
   const completeOnboarding = async () => {
-    if (regretBuffer.isBuffering) return; // Enforce delay
-    regretBuffer.start(5); // 5s Regret Buffer
-    // On confirm: POST to /api/onboarding/complete → Set DB flag, redirect to dashboard
+    if (regretBuffer.isBuffering) return;
+    regretBuffer.start(5);
   };
+
+  // Add confirmation logic for regret buffer
+  useEffect(() => {
+    if (regretBuffer.canConfirm) {
+      const finalize = async () => {
+        const res = await fetch('/api/onboarding/complete', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role })
+        });
+        if (res.ok) {
+          window.location.href = '/dashboard';
+        }
+      };
+      finalize();
+    }
+  }, [regretBuffer.canConfirm, role]);
 
   const nextStep = () => setStep((prev) => prev + 1);
 
