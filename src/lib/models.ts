@@ -13,6 +13,12 @@ const UserSchema = new Schema({
     timestamp: { type: Date, default: Date.now },
   }],
   onboardingAttempts: { type: Number, default: 0 },
+  onboarding: {
+    completed: { type: Boolean, default: false },
+    step: { type: Number, default: 0 },
+    completedAt: { type: Date },
+    version: { type: Number, default: 1 }
+  },
   buyerOnboardingComplete: { type: Boolean, default: false },
   sellerOnboardingComplete: { type: Boolean, default: false },
 });
