@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Product } from '@/lib/models';
-import { connectToDatabase } from '@/lib/mongoose';
+import { connectToDB } from '@/lib/mongoose';
 
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase();
+    await connectToDB();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || 'all';

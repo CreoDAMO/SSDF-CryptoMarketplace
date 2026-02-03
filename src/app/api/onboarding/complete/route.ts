@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import { connectToDB } from '@/lib/mongoose';
 
 export async function POST(req: NextRequest) {
-  const { userId } = auth();
+  const session = await auth();
+  const userId = session.userId;
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -14,6 +16,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    await connectToDB();
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
     
