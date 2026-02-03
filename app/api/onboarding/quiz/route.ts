@@ -12,8 +12,10 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { qId, answer, isFinal } = await req.json();
-    // Ensure we match the key in HLE_PHRASES: QUIZ_A1_CORRECT
-    const correct = answer === (HLE_PHRASES as any)[`${qId.toUpperCase()}_A1_CORRECT`];
+    // Ensure we match the key in HLE_PHRASES: QUIZ_Q1_CORRECT (or whatever is in hle-phrases.ts)
+    // Looking at the screenshot, the question is "Can SSDF reverse a release?"
+    // The correct answer should be False.
+    const correct = answer === 'False';
     
     const user = await User.findOne({ clerkId: userId });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
