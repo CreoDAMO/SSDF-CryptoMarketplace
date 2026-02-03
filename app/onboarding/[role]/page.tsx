@@ -29,34 +29,34 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
   const handleAffirm = (key: keyof typeof affirmations) => setAffirmations((prev) => ({ ...prev, [key]: !prev[key] }));
   
   const handleQuiz = async (qId: string, answer: string) => {
+    console.log('Quiz submitted:', { qId, answer, step });
     setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
     
     try {
       const res = await fetch('/api/onboarding/quiz', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qId, answer, isFinal: step === 3 }) 
+        body: JSON.stringify({ qId, answer, isFinal: true }) 
       });
       
+      const data = await res.json();
+      console.log('Quiz response:', data);
+
       if (!res.ok) {
-        const data = await res.json();
-        
         if (res.status === 429) {
           alert(data.error);
           return;
         }
         
-        if (res.status === 400 || res.status === 401) {
-          setAttempts((prev) => prev + 1);
-          setStep(1);
-        }
-        
+        // If wrong answer, we just notify for now instead of resetting to help debug
+        alert('Verification failed. Please try again.');
         return;
       }
       
-      nextStep();
+      setStep(4);
     } catch (error) {
       console.error('Network error during quiz submission:', error);
+      alert('Network error. Please try again.');
     }
   };
 
