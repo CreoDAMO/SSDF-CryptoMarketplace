@@ -14,25 +14,37 @@ export default function OnboardingGuard({ children, requiredRole }: OnboardingGu
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
+  const [dbStatus, setDbStatus] = useState<{ complete: boolean; role: string } | null>(null);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    async function checkDbStatus() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/user/status?clerkId=${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDbStatus(data);
+        }
+      } catch (err) {
+        console.error('Failed to check user status:', err);
+      }
+    }
+    if (isLoaded && user) {
+      checkDbStatus();
+    }
+  }, [isLoaded, user]);
+
+  useEffect(() => {
+    if (!isLoaded || !dbStatus) return;
 
     if (!user) {
       router.push('/sign-in');
       return;
     }
 
-    const metadata = user.publicMetadata as {
-      onboardingComplete?: boolean;
-      buyerOnboardingComplete?: boolean;
-      sellerOnboardingComplete?: boolean;
-      role?: string;
-    };
-
-    const isBuyerComplete = metadata.buyerOnboardingComplete;
-    const isSellerComplete = metadata.sellerOnboardingComplete;
-    const userRole = metadata.role as string;
+    // Use DB status as the source of truth to avoid Clerk metadata propagation delays
+    const isComplete = dbStatus.complete;
+    const userRole = dbStatus.role;
 
     if (requiredRole === 'admin') {
       if (userRole !== 'admin') {
@@ -41,23 +53,22 @@ export default function OnboardingGuard({ children, requiredRole }: OnboardingGu
       }
     }
 
-    if (requiredRole === 'seller' && !isSellerComplete) {
-      router.push('/onboarding/seller');
+    // If we are already on the onboarding path, don't redirect if the DB says it's incomplete
+    if (pathname && pathname.startsWith('/onboarding')) {
+      if (isComplete) {
+        router.push('/dashboard');
+      }
+      setIsChecking(false);
       return;
     }
 
-    if (requiredRole === 'buyer' && !isBuyerComplete) {
-      router.push('/onboarding/buyer');
-      return;
-    }
-
-    if (!isBuyerComplete && !isSellerComplete && pathname && !pathname.startsWith('/onboarding')) {
+    if (!isComplete) {
       router.push('/onboarding/buyer');
       return;
     }
 
     setIsChecking(false);
-  }, [isLoaded, user, router, pathname, requiredRole]);
+  }, [isLoaded, user, router, pathname, requiredRole, dbStatus]);
 
   if (!isLoaded || isChecking) {
     return (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { connectToDB } from '@/lib/mongoose';
+import { User } from '@/lib/models';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -17,6 +18,23 @@ export async function POST(req: NextRequest) {
 
   try {
     await connectToDB();
+    
+    // Update MongoDB (Source of Truth)
+    await User.findOneAndUpdate(
+      { clerkId: userId },
+      { 
+        $set: { 
+          onboardingComplete: true, 
+          role,
+          buyerOnboardingComplete: role === 'buyer',
+          sellerOnboardingComplete: role === 'seller',
+          'onboarding.completed': true,
+          'onboarding.completedAt': new Date()
+        } 
+      },
+      { upsert: true }
+    );
+
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
     
@@ -24,10 +42,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: 'Already complete' });
     }
 
+    // Update Clerk (UX/Role metadata)
     await client.users.updateUser(userId, {
       publicMetadata: {
         onboardingComplete: true,
         role,
+        buyerOnboardingComplete: role === 'buyer',
+        sellerOnboardingComplete: role === 'seller',
       },
     });
 
