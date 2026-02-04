@@ -62,16 +62,25 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
   useEffect(() => {
     if (regretBuffer.canConfirm) {
       const finalize = async () => {
-        const res = await fetch('/api/onboarding/complete', { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role })
-        });
-        if (res.ok) {
-          sessionStorage.removeItem('onboardingAttempts');
-          await user?.reload();
-          router.replace('/dashboard');
-          router.refresh();
+        try {
+          const res = await fetch('/api/onboarding/complete', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role })
+          });
+          
+          if (res.ok) {
+            sessionStorage.removeItem('onboardingAttempts');
+            await user?.reload();
+            // Using window.location.href for a clean, hard redirect to ensure middleware picks up the change
+            window.location.href = '/dashboard';
+          } else if (res.status === 401) {
+            console.error('Unauthorized on complete API. This usually means the session is stale.');
+            // Attempt one reload to refresh the session token
+            window.location.reload();
+          }
+        } catch (error) {
+          console.error('Finalization error:', error);
         }
       };
       finalize();
