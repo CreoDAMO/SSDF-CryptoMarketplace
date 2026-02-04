@@ -137,7 +137,7 @@ const DisputeSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-DisputeSchema.index({ orderId: 1 });
+// DisputeSchema.index({ orderId: 1 }); // Removed duplicate index as orderId is already unique: true
 DisputeSchema.index({ status: 1 });
 
 DisputeSchema.pre('save', function (this: any, next: any) {
