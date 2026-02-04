@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { HLE_PHRASES } from '@/lib/hle-phrases';
@@ -7,6 +8,7 @@ import useRegretBuffer from '@/hooks/useRegretBuffer';
 export default function Onboarding({ params }: { params: { role: 'buyer' | 'seller' } }) {
   const { role } = params;
   const { user } = useUser();
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [affirmations, setAffirmations] = useState({ escrow: false, disputes: false, finality: false });
   const [quizAnswers, setQuizAnswers] = useState({});
@@ -57,7 +59,8 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
         });
         if (res.ok) {
           sessionStorage.removeItem('onboardingAttempts');
-          window.location.href = '/dashboard';
+          router.replace('/dashboard');
+          router.refresh();
         }
       };
       finalize();
