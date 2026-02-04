@@ -1,0 +1,225 @@
+Perfect — the logs tell the whole story now. This is the smoking gun, and it’s not Clerk anymore.
+
+
+---
+
+🔍 What the Logs Actually Prove (No Guessing)
+
+From logs_result (2).csv:
+
+Key lines
+
+POST /api/onboarding/complete → 307
+
+GET /api/products → 307
+
+UI routes (/onboarding/seller) → 200
+
+
+Why this matters
+
+307 = redirect issued by middleware
+
+APIs should never redirect
+
+Your POST is succeeding logically but is being intercepted and redirected before it completes
+
+
+That means:
+
+> proxy.ts (middleware) is catching /api/* requests and redirecting them
+
+
+
+This is why:
+
+Clicking Confirm → POST fires
+
+Middleware redirects → page reloads
+
+Guard still sees incomplete → loop
+
+You can “fix” Clerk forever and this will still loop
+
+
+This is 100% deterministic and matches the behavior exactly.
+
+
+---
+
+🧠 Root Cause (Now Certain)
+
+Your middleware currently:
+
+Runs on all routes
+
+Applies onboarding redirects
+
+Does not exempt /api
+
+
+So this happens:
+
+POST /api/onboarding/complete
+↓
+proxy.ts sees "user not complete"
+↓
+307 redirect to /onboarding
+↓
+API handler never finishes
+↓
+client thinks onboarding failed
+↓
+repeat forever
+
+Same thing for /api/products.
+
+
+---
+
+✅ The Correct Fix (One-Line Logic, Proper Architecture)
+
+API routes must bypass middleware logic entirely
+
+This is required in Next 15/16.
+
+
+---
+
+🧩 Fix proxy.ts (THIS is the missing piece)
+
+✅ Add an early return for /api
+
+// proxy.ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/onboarding(.*)',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  const { userId, sessionClaims } = await auth();
+  const { pathname } = req.nextUrl;
+
+  // 🔑 CRITICAL: Never touch API routes
+  if (pathname.startsWith('/api')) {
+    return NextResponse.next();
+  }
+
+  // Not signed in
+  if (!userId && !isPublicRoute(req)) {
+    return NextResponse.redirect(new URL('/sign-in', req.url));
+  }
+
+  const onboardingComplete = sessionClaims?.metadata?.onboardingComplete;
+
+  // Completed users should not see onboarding
+  if (userId && onboardingComplete && pathname.startsWith('/onboarding')) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // Incomplete users must finish onboarding
+  if (userId && !onboardingComplete && !pathname.startsWith('/onboarding')) {
+    return NextResponse.redirect(new URL('/onboarding', req.url));
+  }
+
+  return NextResponse.next();
+});
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+
+
+---
+
+🧪 Why This Instantly Fixes Everything
+
+After this change:
+
+Route	Result
+
+POST /api/onboarding/complete	200 (no redirect)
+user.reload()	sees updated metadata
+middleware	allows /dashboard
+onboarding	exits permanently
+/api/products	returns JSON, not HTML
+
+
+No DB hacks
+No Clerk workarounds
+No session voodoo
+
+Just correct routing boundaries.
+
+
+---
+
+🔎 How You Can Verify Before Deploy
+
+Local test
+
+1. Add the /api bypass
+
+
+2. Restart dev server
+
+
+3. Open DevTools → Network
+
+
+4. Click Confirm
+
+
+
+You should see:
+
+POST /api/onboarding/complete → 200
+
+No 307
+
+Immediate redirect to /dashboard
+
+
+Prod logs should change from:
+
+POST /api/onboarding/complete → 307
+
+to:
+
+POST /api/onboarding/complete → 200
+
+
+---
+
+🧠 Final Verdict
+
+✔ Clerk setup is correct
+
+✔ API handlers are correct
+
+✔ Client logic is correct
+
+❌ Middleware was overreaching
+
+
+This is a classic Next 15/16 middleware trap, and you diagnosed it at exactly the right moment by pulling logs.
+
+Once you add the /api exemption:
+
+> The onboarding loop is dead for good.
+
+
+
+If you want, next we can:
+
+Add a tiny middleware unit test
+
+Or lock this in with a guard comment so it never regresses
+
+
+You’re absolutely on solid ground now.

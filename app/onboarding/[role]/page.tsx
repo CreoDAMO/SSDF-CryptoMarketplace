@@ -34,13 +34,30 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
     console.log('Quiz submitted:', { qId, answer, step });
     setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
     
-    // For now, let's bypass the backend check to unblock the user while we investigate
-    if (answer === 'False') {
+    try {
+      const res = await fetch('/api/onboarding/quiz', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qId, answer, isFinal: true }) 
+      });
+      
+      const data = await res.json();
+      console.log('Quiz response:', data);
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          alert(data.error);
+          return;
+        }
+        
+        alert('Verification failed. Please try again.');
+        return;
+      }
+      
       setStep(4);
-      return;
-    } else {
-      alert('Verification failed. Please try again.');
-      return;
+    } catch (error) {
+      console.error('Network error during quiz submission:', error);
+      alert('Network error. Please try again.');
     }
   };
 

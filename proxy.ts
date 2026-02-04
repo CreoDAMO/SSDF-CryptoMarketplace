@@ -24,6 +24,11 @@ export default clerkMiddleware(async (auth, request) => {
   const { userId, sessionClaims, redirectToSignIn } = await auth();
   const pathname = request.nextUrl.pathname;
 
+  // 🔑 CRITICAL: Never touch API routes
+  if (pathname.startsWith('/api')) {
+    return NextResponse.next();
+  }
+
   // 1. Protect private routes
   if (!userId && !isPublicRoute(request)) {
     return redirectToSignIn({ returnBackUrl: request.url });
