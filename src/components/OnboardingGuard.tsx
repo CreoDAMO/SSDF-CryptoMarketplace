@@ -14,37 +14,24 @@ export default function OnboardingGuard({ children, requiredRole }: OnboardingGu
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
-  const [dbStatus, setDbStatus] = useState<{ complete: boolean; role: string } | null>(null);
 
   useEffect(() => {
-    async function checkDbStatus() {
-      if (!user?.id) return;
-      try {
-        const res = await fetch(`/api/user/status?clerkId=${user.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setDbStatus(data);
-        }
-      } catch (err) {
-        console.error('Failed to check user status:', err);
-      }
-    }
-    if (isLoaded && user) {
-      checkDbStatus();
-    }
-  }, [isLoaded, user]);
-
-  useEffect(() => {
-    if (!isLoaded || !dbStatus) return;
+    if (!isLoaded) return;
 
     if (!user) {
       router.push('/sign-in');
       return;
     }
 
-    // Use DB status as the source of truth to avoid Clerk metadata propagation delays
-    const isComplete = dbStatus.complete;
-    const userRole = dbStatus.role;
+    const metadata = user.publicMetadata as {
+      onboardingComplete?: boolean;
+      buyerOnboardingComplete?: boolean;
+      sellerOnboardingComplete?: boolean;
+      role?: string;
+    };
+
+    const isComplete = metadata.onboardingComplete;
+    const userRole = metadata.role as string;
 
     if (requiredRole === 'admin') {
       if (userRole !== 'admin') {
@@ -53,8 +40,7 @@ export default function OnboardingGuard({ children, requiredRole }: OnboardingGu
       }
     }
 
-    // If we are already on the onboarding path, don't redirect if the DB says it's incomplete
-    if (pathname && pathname.startsWith('/onboarding')) {
+    if (pathname?.startsWith('/onboarding')) {
       if (isComplete) {
         router.push('/dashboard');
       }
@@ -62,13 +48,13 @@ export default function OnboardingGuard({ children, requiredRole }: OnboardingGu
       return;
     }
 
-    if (!isComplete) {
+    if (!isComplete && !pathname?.startsWith('/onboarding')) {
       router.push('/onboarding/buyer');
       return;
     }
 
     setIsChecking(false);
-  }, [isLoaded, user, router, pathname, requiredRole, dbStatus]);
+  }, [isLoaded, user, router, pathname, requiredRole]);
 
   if (!isLoaded || isChecking) {
     return (

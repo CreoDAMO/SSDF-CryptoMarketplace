@@ -21,9 +21,30 @@ const isAdminRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
+  const { userId, sessionClaims, redirectToSignIn } = await auth();
+  const pathname = request.nextUrl.pathname;
+
+  // 1. Protect private routes
+  if (!userId && !isPublicRoute(request)) {
+    return redirectToSignIn({ returnBackUrl: request.url });
   }
+
+  // 2. Handle onboarding redirect for logged-in users
+  if (userId) {
+    const onboardingComplete = (sessionClaims?.metadata as any)?.onboardingComplete;
+
+    // If onboarding is incomplete and user isn't on an onboarding page, redirect to onboarding
+    if (!onboardingComplete && !pathname.startsWith('/onboarding')) {
+      return NextResponse.redirect(new URL('/onboarding/buyer', request.url));
+    }
+
+    // If onboarding is complete and user is trying to access onboarding, redirect to dashboard
+    if (onboardingComplete && pathname.startsWith('/onboarding')) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+  }
+
+  return NextResponse.next();
 });
 
 export const config = {

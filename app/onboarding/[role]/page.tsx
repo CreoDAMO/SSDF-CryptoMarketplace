@@ -59,6 +59,7 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
         });
         if (res.ok) {
           sessionStorage.removeItem('onboardingAttempts');
+          await user?.reload();
           router.replace('/dashboard');
           router.refresh();
         }
