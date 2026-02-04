@@ -1,5 +1,5 @@
 // /api/onboarding/quiz: POST - Validate + log
-import { auth } from '@clerk/nextjs/server';
+import { getAuth } from '@clerk/nextjs/server';
 import { User } from '@/lib/models';
 import { HLE_PHRASES } from '@/lib/hle-phrases';
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,12 +8,13 @@ import { connectToDB } from '@/lib/mongoose';
 export async function POST(req: NextRequest) {
   try {
     await connectToDB();
-    const { userId } = await auth();
+    const { userId } = getAuth(req);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { qId, answer, isFinal } = await req.json();
     
     // Validate answer against HLE_PHRASES
+    // The answer from client is boolean, HLE_PHRASES.QUIZ_A1_CORRECT is 'False'
     const correct = String(answer).toLowerCase() === HLE_PHRASES.QUIZ_A1_CORRECT.toLowerCase();
     
     const user = await User.findOne({ clerkId: userId });

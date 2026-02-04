@@ -9,17 +9,6 @@ const isPublicRoute = createRouteMatcher([
   '/onboarding(.*)',
 ]);
 
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/orders(.*)',
-  '/checkout(.*)',
-  '/product(.*)',
-]);
-
-const isAdminRoute = createRouteMatcher([
-  '/admin(.*)',
-]);
-
 export default clerkMiddleware(async (auth, request) => {
   const { userId, sessionClaims, redirectToSignIn } = await auth();
   const pathname = request.nextUrl.pathname;
