@@ -1,7 +1,7 @@
 'use client';
-import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { HLE_PHRASES } from '@/lib/hle-phrases';
 import useRegretBuffer from '@/hooks/useRegretBuffer';
 
@@ -29,29 +29,38 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
   }
 
   const handleAffirm = (key: keyof typeof affirmations) => setAffirmations((prev) => ({ ...prev, [key]: !prev[key] }));
-  
-  const handleQuiz = async (qId: string, answer: string) => {
+
+  const handleQuiz = async (qId: string, answer: boolean) => {  // Switch to boolean
     console.log('Quiz submitted:', { qId, answer, step });
     setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
-    
-    // Locally check for the correct answer 'False' to unblock UI transitions
-    // This ensures the user isn't stuck if the backend is slow or failing due to DB issues
-    if (answer === 'False') {
-      console.log('Quiz correct (local check), moving to completion.');
-      setStep(4);
-      
-      // Still try to notify backend in background for logging
-      fetch('/api/onboarding/quiz', { 
-        method: 'POST', 
+
+    try {
+      const res = await fetch('/api/onboarding/quiz', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qId, answer, isFinal: true }) 
-      }).catch(e => console.warn('Background quiz log failed:', e));
-      
-      return;
+        body: JSON.stringify({ qId, answer, isFinal: true }),  // Send boolean
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        if (res.status === 429) {
+          alert(data.error);
+        } else if (res.status >= 500) {  // Infra fail—don't penalize
+          alert('Server issue—try again shortly.');
+          return;  // No increment/reset
+        }
+        setAttempts((prev) => prev + 1);
+        alert('Verification failed. Please try again.');
+        return;
+      }
+
+      // Backend confirmed—move to completion
+      console.log('Quiz correct (backend confirmed), moving to completion.');
+      setStep(4);
+    } catch (e) {
+      console.warn('Quiz submission failed:', e);
+      alert('Verification failed. Please try again.');
     }
-    
-    // If they picked 'True', it's always wrong for this specific question
-    alert('Verification failed. Please try again.');
   };
 
   const completeOnboarding = async () => {
@@ -63,20 +72,17 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
     if (regretBuffer.canConfirm) {
       const finalize = async () => {
         try {
-          const res = await fetch('/api/onboarding/complete', { 
+          const res = await fetch('/api/onboarding/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role })
+            body: JSON.stringify({ role }),
           });
-          
           if (res.ok) {
             sessionStorage.removeItem('onboardingAttempts');
             await user?.reload();
-            // Using window.location.href for a clean, hard redirect to ensure middleware picks up the change
-            window.location.href = '/dashboard';
+            window.location.href = '/dashboard';  // Hard redirect for full sync
           } else if (res.status === 401) {
-            console.error('Unauthorized on complete API. This usually means the session is stale.');
-            // Attempt one reload to refresh the session token
+            console.error('Unauthorized—stale session.');
             window.location.reload();
           }
         } catch (error) {
@@ -85,7 +91,7 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
       };
       finalize();
     }
-  }, [regretBuffer.canConfirm, role]);
+  }, [regretBuffer.canConfirm, role, user]);
 
   const nextStep = () => setStep((prev) => prev + 1);
 
@@ -111,8 +117,8 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
           <label style={{ display: 'block' }}>
             <input type="checkbox" checked={affirmations.finality} onChange={() => handleAffirm('finality')} /> {HLE_PHRASES.AFFIRM_FINALITY}
           </label>
-          <button 
-            onClick={nextStep} 
+          <button
+            onClick={nextStep}
             disabled={!affirmations.escrow || !affirmations.disputes || !affirmations.finality}
             style={{ marginTop: '1rem' }}
           >
@@ -125,8 +131,8 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
           <h3>Final Verification</h3>
           <p style={{ margin: '1rem 0' }}>{HLE_PHRASES.QUIZ_Q1}</p>
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={() => handleQuiz('QUIZ_Q1', 'True')} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', border: 'none', backgroundColor: '#3b82f6', color: 'white' }}>True</button>
-            <button onClick={() => handleQuiz('QUIZ_Q1', 'False')} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', border: 'none', backgroundColor: '#3b82f6', color: 'white' }}>False</button>
+            <button onClick={() => handleQuiz('QUIZ_Q1', true)} style={{ flex: 1 }}>True</button>
+            <button onClick={() => handleQuiz('QUIZ_Q1', false)} style={{ flex: 1 }}>False</button>
           </div>
         </div>
       )}
@@ -135,8 +141,8 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
           <h3>Completion</h3>
           <p style={{ margin: '1rem 0' }}>Ready to finalize your onboarding as a {role}.</p>
           {regretBuffer.confirmModal}
-          <button 
-            onClick={completeOnboarding} 
+          <button
+            onClick={completeOnboarding}
             disabled={regretBuffer.isBuffering}
             style={{ width: '100%', padding: '0.75rem' }}
           >
