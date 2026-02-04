@@ -12,37 +12,43 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { role } = body;
-  if (!role || !['buyer', 'seller'].includes(role)) {
+  const allowedRoles = ['buyer', 'seller'] as const;
+  if (!role || !allowedRoles.includes(role)) {
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
   }
 
   try {
     await connectToDB();
-    
-    // Update MongoDB (Source of Truth)
+
+    // Idempotent: Check Mongo first (source of truth)
+    const existingUser = await User.findOne({ clerkId: userId });
+    if (existingUser?.onboarding?.completed) {
+      return NextResponse.json({ success: true, message: 'Already complete' });
+    }
+
+    // Update Mongo (Upsert for new users)
     await User.findOneAndUpdate(
       { clerkId: userId },
       { 
         $set: { 
           onboardingComplete: true, 
-          role,
-          buyerOnboardingComplete: role === 'buyer',
-          sellerOnboardingComplete: role === 'seller',
-          'onboarding.completed': true,
-          'onboarding.completedAt': new Date()
+          role, 
+          buyerOnboardingComplete: role === 'buyer', 
+          sellerOnboardingComplete: role === 'seller', 
+          'onboarding.completed': true, 
+          'onboarding.completedAt': new Date() 
         } 
       },
       { upsert: true }
     );
 
+    // Sync to Clerk (For fast guards/metadata)
     const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    
-    if (user.publicMetadata.onboardingComplete) {
+    const clerkUser = await client.users.getUser(userId);
+    if (clerkUser.publicMetadata.onboardingComplete) {
       return NextResponse.json({ success: true, message: 'Already complete' });
     }
 
-    // Update Clerk (UX/Role metadata)
     await client.users.updateUser(userId, {
       publicMetadata: {
         onboardingComplete: true,
