@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
     // The answer from client is boolean (true/false)
     // HLE_PHRASES.QUIZ_A1_CORRECT is 'False' (string)
     // We convert both to lowercase strings for a robust comparison
-    const correctAnswer = String(HLE_PHRASES.QUIZ_A1_CORRECT).toLowerCase();
-    const submittedAnswer = String(answer).toLowerCase();
+    const correctAnswer = String(HLE_PHRASES.QUIZ_A1_CORRECT).toLowerCase().trim();
+    const submittedAnswer = String(answer).toLowerCase().trim();
     const correct = submittedAnswer === correctAnswer;
     
-    console.log(`Quiz validation: submitted=${submittedAnswer}, expected=${correctAnswer}, correct=${correct}`);
+    console.log(`Quiz validation: qId=${qId}, submitted=${submittedAnswer}, expected=${correctAnswer}, correct=${correct}`);
 
     const user = await User.findOne({ clerkId: userId });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });

@@ -43,14 +43,18 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
 
       if (!res.ok) {
         const data = await res.json();
+        console.error('Quiz error response:', data);
         if (res.status === 429) {
           alert(data.error);
         } else if (res.status >= 500) {  // Infra fail—don't penalize
           alert('Server issue—try again shortly.');
           return;  // No increment/reset
+        } else if (res.status === 404) {
+          alert('User profile not found. Please try refreshing the page.');
+          return;
         }
         setAttempts((prev) => prev + 1);
-        alert('Verification failed. Please try again.');
+        alert(`Verification failed: ${data.error || 'Incorrect answer'}. Please try again.`);
         return;
       }
 
