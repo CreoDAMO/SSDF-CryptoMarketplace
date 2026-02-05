@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 
 export async function POST(req: Request) {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -10,7 +10,6 @@ export async function POST(req: Request) {
   const { answer } = await req.json();
 
   // Explicit, stateless verification: "Can SSDF reverse a release?" -> False
-  // Handle both boolean and string "false" for robustness
   const correct = answer === false || String(answer).toLowerCase() === 'false';
 
   if (!correct) {
