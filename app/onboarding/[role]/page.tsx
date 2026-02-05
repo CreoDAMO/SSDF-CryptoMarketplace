@@ -35,9 +35,15 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
     setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
 
     try {
+      // Force a small delay to ensure session is synced if needed
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const res = await fetch('/api/onboarding/quiz', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
         body: JSON.stringify({ qId, answer, isFinal: true }),  // Send boolean
       });
 

@@ -9,7 +9,15 @@ export async function POST(req: NextRequest) {
   try {
     await connectToDB();
     const { userId } = getAuth(req);
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.log('Quiz endpoint: userId from getAuth:', userId);
+    
+    // In development or when using certain proxies, getAuth might fail if headers are missing.
+    // However, if Clerk is configured correctly, it should work.
+    if (!userId) {
+      console.warn('Unauthorized: No userId found in getAuth(req). Headers:', Object.fromEntries(req.headers.entries()));
+      // If we are in a local dev environment with clerk-sync-keyless, we might need to handle it.
+      return NextResponse.json({ error: 'Unauthorized: Session not found' }, { status: 401 });
+    }
 
     const { qId, answer, isFinal } = await req.json();
     
