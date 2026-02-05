@@ -13,13 +13,12 @@ export default clerkMiddleware(async (auth, request) => {
   const { userId, sessionClaims, redirectToSignIn } = await auth();
   const pathname = request.nextUrl.pathname;
 
-  // 🔑 CRITICAL: Never touch API routes
-  if (pathname.startsWith('/api')) {
-    return NextResponse.next();
-  }
-
   // 1. Protect private routes
   if (!userId && !isPublicRoute(request)) {
+    // If it's an API route and not authenticated, return 401 instead of redirecting to sign-in
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return redirectToSignIn({ returnBackUrl: request.url });
   }
 
@@ -27,8 +26,8 @@ export default clerkMiddleware(async (auth, request) => {
   if (userId) {
     const onboardingComplete = (sessionClaims?.metadata as any)?.onboardingComplete;
 
-    // If onboarding is incomplete and user isn't on an onboarding page, redirect to onboarding
-    if (!onboardingComplete && !pathname.startsWith('/onboarding')) {
+    // If onboarding is incomplete and user isn't on an onboarding page or API, redirect to onboarding
+    if (!onboardingComplete && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api')) {
       return NextResponse.redirect(new URL('/onboarding/buyer', request.url));
     }
 
