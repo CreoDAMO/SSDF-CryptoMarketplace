@@ -30,46 +30,26 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
 
   const handleAffirm = (key: keyof typeof affirmations) => setAffirmations((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handleQuiz = async (qId: string, answer: boolean) => {  // Switch to boolean
-    console.log('Quiz submitted:', { qId, answer, step });
-    setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
-
+  const handleQuiz = async (qId: string, answer: string) => {
+    console.log('Quiz submitted:', { qId, answer });
+    
     try {
-      // Force a small delay to ensure session is synced if needed
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const res = await fetch('/api/onboarding/quiz', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        },
-        body: JSON.stringify({ qId, answer, isFinal: true }),  // Send boolean
+      const res = await fetch('/api/onboarding/quiz', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answer: answer === 'False' ? false : true }) 
       });
-
+      
       if (!res.ok) {
         const data = await res.json();
-        console.error('Quiz error response:', data);
-        if (res.status === 429) {
-          alert(data.error);
-        } else if (res.status >= 500) {  // Infra fail—don't penalize
-          alert('Server issue—try again shortly.');
-          return;  // No increment/reset
-        } else if (res.status === 404) {
-          alert('User profile not found. Please try refreshing the page.');
-          return;
-        }
-        setAttempts((prev) => prev + 1);
-        alert(`Verification failed: ${data.error || 'Incorrect answer'}. Please try again.`);
+        alert(data.error || 'Verification failed. Please try again.');
         return;
       }
-
-      // Backend confirmed—move to completion
-      console.log('Quiz correct (backend confirmed), moving to completion.');
+      
       setStep(4);
-    } catch (e) {
-      console.warn('Quiz submission failed:', e);
-      alert('Verification failed. Please try again.');
+    } catch (error) {
+      console.error('Quiz error:', error);
+      alert('Network error. Please try again.');
     }
   };
 
@@ -82,21 +62,24 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
     if (regretBuffer.canConfirm) {
       const finalize = async () => {
         try {
-          const res = await fetch('/api/onboarding/complete', {
+          const res = await fetch('/api/onboarding/complete', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role }),
+            body: JSON.stringify({ role })
           });
+          
           if (res.ok) {
             sessionStorage.removeItem('onboardingAttempts');
+            // Mandatory reload per Clerk best practices for metadata propagation
             await user?.reload();
-            window.location.href = '/dashboard';  // Hard redirect for full sync
-          } else if (res.status === 401) {
-            console.error('Unauthorized—stale session.');
-            window.location.reload();
+            window.location.href = '/dashboard';
+          } else {
+            const data = await res.json();
+            alert(data.error || 'Finalization failed.');
           }
         } catch (error) {
           console.error('Finalization error:', error);
+          alert('Network error during finalization.');
         }
       };
       finalize();
