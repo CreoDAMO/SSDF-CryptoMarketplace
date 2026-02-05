@@ -18,10 +18,8 @@ export async function POST(req: NextRequest) {
 
     const { qId, answer, isFinal } = await req.json();
     
-    // Validate answer against HLE_PHRASES
-    const correctAnswer = String(HLE_PHRASES.QUIZ_A1_CORRECT).toLowerCase();
-    const submittedAnswer = String(answer).toLowerCase();
-    const correct = submittedAnswer === correctAnswer;
+    // Validate answer
+    const correct = answer === false;
     
     const user = await User.findOne({ clerkId: userId });
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });

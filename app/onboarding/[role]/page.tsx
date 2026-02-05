@@ -37,7 +37,8 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
       const res = await fetch('/api/onboarding/quiz', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer }) 
+        credentials: 'include',
+        body: JSON.stringify({ qId, answer }) 
       });
       
       if (!res.ok) {
@@ -65,6 +66,7 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
           const res = await fetch('/api/onboarding/complete', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ role })
           });
           
