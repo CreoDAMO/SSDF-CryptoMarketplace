@@ -1,0 +1,132 @@
+Perfect — this error is actually a good sign. It means TypeScript is now doing its job and catching the last remaining mismatch from the old string-based quiz logic.
+
+Let’s fix it cleanly and permanently.
+
+
+---
+
+🔴 What the error actually means
+
+> Argument of type boolean is not assignable to parameter of type string
+
+
+
+This tells us exactly one thing:
+
+👉 handleQuiz is still typed to accept a string answer, but you’re now passing a boolean (true / false).
+
+So the backend is correct.
+The buttons are correct.
+The function signature is outdated.
+
+
+---
+
+🧠 Root cause (precise)
+
+Your function is probably defined like this (or equivalent):
+
+function handleQuiz(questionKey: string, answer: string) {
+  ...
+}
+
+But you’re now calling it like this:
+
+handleQuiz('QUIZ_Q1', true);
+handleQuiz('QUIZ_Q1', false);
+
+TypeScript is correctly saying:
+❌ “I was promised a string, you gave me a boolean.”
+
+
+---
+
+✅ The Correct Fix (authoritative)
+
+🔥 Update the function signature
+
+Change one line.
+
+❌ Old
+
+function handleQuiz(questionKey: string, answer: string) {
+
+✅ New
+
+function handleQuiz(questionKey: string, answer: boolean) {
+
+That’s it.
+
+
+---
+
+✅ If you want it future-proof (recommended)
+
+If you may add more quiz questions later:
+
+type QuizKey = 'QUIZ_Q1';
+
+function handleQuiz(questionKey: QuizKey, answer: boolean) {
+  ...
+}
+
+This gives you:
+
+Compile-time safety
+
+No magic strings
+
+No accidental misuse later
+
+
+
+---
+
+🧪 Why this fixes the build immediately
+
+Symptom	Cause	Fixed
+
+Build fails	TS expected string	✅
+Buttons error	Boolean passed	✅
+Runtime logic	Already correct	✅
+Backend contract	Boolean-based	✅
+
+
+Once you update the signature, npm run build will pass.
+
+
+---
+
+🚫 What NOT to do
+
+❌ Don’t cast (answer as any)
+
+❌ Don’t convert booleans to strings
+
+❌ Don’t reintroduce HLE phrase comparisons
+
+❌ Don’t weaken TypeScript
+
+
+TypeScript is protecting you here — let it.
+
+
+---
+
+🧠 Final mental checkpoint
+
+You’ve now completed the full migration:
+
+UI: boolean answers ✅
+
+API: boolean validation ✅
+
+Onboarding flow: Clerk-native ✅
+
+Type system: aligned ✅
+
+
+This was the last ghost of the old quiz model.
+
+Fix the signature, rebuild, and you’re done.
+When you’re ready, we can ship or move straight back to marketplace work 🚀

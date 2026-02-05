@@ -30,14 +30,14 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
 
   const handleAffirm = (key: keyof typeof affirmations) => setAffirmations((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handleQuiz = async (qId: string, answer: string) => {
+  const handleQuiz = async (qId: string, answer: boolean) => {
     console.log('Quiz submitted:', { qId, answer });
     
     try {
       const res = await fetch('/api/onboarding/quiz', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer: answer === 'False' ? false : true }) 
+        body: JSON.stringify({ answer }) 
       });
       
       if (!res.ok) {
@@ -124,8 +124,8 @@ export default function Onboarding({ params }: { params: { role: 'buyer' | 'sell
           <h3>Final Verification</h3>
           <p style={{ margin: '1rem 0' }}>{HLE_PHRASES.QUIZ_Q1}</p>
           <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={() => handleQuiz('QUIZ_Q1', true)} style={{ flex: 1 }}>True</button>
-            <button onClick={() => handleQuiz('QUIZ_Q1', false)} style={{ flex: 1 }}>False</button>
+            <button onClick={() => handleQuiz('QUIZ_Q1', true)} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', border: 'none', backgroundColor: '#3b82f6', color: 'white' }}>True</button>
+            <button onClick={() => handleQuiz('QUIZ_Q1', false)} style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', cursor: 'pointer', border: 'none', backgroundColor: '#3b82f6', color: 'white' }}>False</button>
           </div>
         </div>
       )}
